@@ -3,26 +3,136 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /**
+   * Nyra accent — muted rose: sole accent for the current primary CTA and subtle selection hints.
+   */
+  --nyra-accent: #c08497;
+  --nyra-accent-hover: #d19aaa;
+  --nyra-accent-active: #a86b82;
+  --nyra-accent-soft: rgba(192, 132, 151, 0.16);
+  --nyra-accent-foreground: #ffffff;
+  --nyra-accent-ring: rgba(192, 132, 151, 0.38);
+  /** Defaults for non-chat surfaces (landing, etc.). */
+  --nyra-user-bubble-bg: #5a6578;
+  --nyra-user-bubble-text: #f4f5f7;
+  --nyra-user-bubble-border: rgba(255, 255, 255, 0.09);
+  --nyra-user-bubble-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 4px 16px -10px rgba(45, 55, 72, 0.2);
+  /** ChatGPT-like tokens (scoped on `.nyra-chat-shell`; fallbacks unused outside chat). */
+  --chat-canvas: #ffffff;
+  --chat-pane: #ffffff;
+  --chat-sidebar: #fafafa;
+  --chat-raised: #f4f4f5;
+  --chat-input: #f4f4f5;
+  --chat-border: rgba(0, 0, 0, 0.1);
+  --chat-border-muted: rgba(0, 0, 0, 0.06);
+  --chat-text-primary: #171717;
+  --chat-text-secondary: #52525b;
+  --chat-text-muted: #71717a;
+  --chat-assistant-surface: #ffffff;
+  --chat-assistant-border: rgba(0, 0, 0, 0.1);
+}
+
+/**
+ * Nyra chat: ChatGPT-style dark system. Descendants inherit tokens for Tailwind `chat-*` colors.
+ */
+.nyra-chat-shell {
+  --background: #212121;
+  --foreground: #ececec;
+  --nyra-accent: #c08497;
+  --nyra-accent-hover: #d19aaa;
+  --nyra-accent-active: #a86b82;
+  --nyra-accent-soft: rgba(192, 132, 151, 0.16);
+  --nyra-accent-foreground: #ffffff;
+  --nyra-accent-ring: rgba(192, 132, 151, 0.38);
+  --nyra-user-bubble-bg: rgba(255, 255, 255, 0.07);
+  --nyra-user-bubble-text: #ececec;
+  --nyra-user-bubble-border: rgba(255, 255, 255, 0.11);
+  --nyra-user-bubble-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --chat-canvas: #212121;
+  --chat-pane: #212121;
+  --chat-sidebar: #171717;
+  --chat-raised: #2f2f2f;
+  --chat-input: #2f2f2f;
+  --chat-border: rgba(255, 255, 255, 0.1);
+  --chat-border-muted: rgba(255, 255, 255, 0.06);
+  --chat-text-primary: #ececec;
+  --chat-text-secondary: #c5c5c5;
+  --chat-text-muted: #8e8e8e;
+  --chat-assistant-surface: rgba(255, 255, 255, 0.04);
+  --chat-assistant-border: rgba(255, 255, 255, 0.1);
+  color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-nyra-accent: var(--nyra-accent);
+  --color-nyra-accent-hover: var(--nyra-accent-hover);
+  --color-nyra-accent-active: var(--nyra-accent-active);
+  --color-nyra-accent-soft: var(--nyra-accent-soft);
+  --color-nyra-accent-fg: var(--nyra-accent-foreground);
+  --color-chat-canvas: var(--chat-canvas);
+  --color-chat-pane: var(--chat-pane);
+  --color-chat-sidebar: var(--chat-sidebar);
+  --color-chat-raised: var(--chat-raised);
+  --color-chat-input: var(--chat-input);
+  --color-chat-border: var(--chat-border);
+  --color-chat-border-muted: var(--chat-border-muted);
+  --color-chat-text-primary: var(--chat-text-primary);
+  --color-chat-text-secondary: var(--chat-text-secondary);
+  --color-chat-text-muted: var(--chat-text-muted);
+  --color-chat-assistant-surface: var(--chat-assistant-surface);
+  --color-chat-assistant-border: var(--chat-assistant-border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/**
+ * Subtle stacked shadows for cards — neutral, not flashy.
+ * Use with border + ring-1 ring-black/[0.03] on surfaces.
+ */
+.nyra-chat-shell .nyra-surface-soft {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 12px 40px -22px rgba(0, 0, 0, 0.65);
+}
+
+.nyra-surface-soft {
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.04),
+    0 10px 28px -14px rgba(0, 0, 0, 0.08);
+}
+
+/** Assistant reply bubble — softer lift than cards so copy reads as chat, not a panel. */
+.nyra-chat-shell .nyra-assistant-reply-surface {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.nyra-assistant-reply-surface {
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.028),
+    0 6px 20px -12px rgba(0, 0, 0, 0.055);
+}
+
+.nyra-chat-shell .nyra-surface-elevated {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 24px 56px -28px rgba(0, 0, 0, 0.75);
+}
+
+.nyra-surface-elevated {
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.05),
+    0 16px 42px -18px rgba(0, 0, 0, 0.1);
 }
 
 @keyframes nyraShimmer {
@@ -43,4 +153,274 @@ body {
   );
   background-size: 200% 100%;
   animation: nyraShimmer 1.25s ease-in-out infinite;
+}
+
+.nyra-chat-shell .nyra-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    rgb(55 55 55) 0%,
+    rgb(70 70 70) 40%,
+    rgb(55 55 55) 80%
+  );
+}
+
+/** Meta labels — intentionally quiet vs headings and body. */
+.nyra-eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgb(163 163 163);
+}
+
+.nyra-chat-shell .nyra-eyebrow {
+  color: var(--chat-text-muted);
+}
+
+/** Primary — filled rose; only one instance promoted as primary in chat chrome at a time. */
+.nyra-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.625rem 1.375rem;
+  border-radius: 9999px;
+  border: none;
+  background-color: var(--nyra-accent);
+  color: var(--nyra-accent-foreground);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--nyra-accent-foreground) 10%, transparent),
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 8px 22px -14px color-mix(in srgb, var(--nyra-accent) 34%, transparent);
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.nyra-chat-shell .nyra-btn-primary {
+  box-shadow: none;
+}
+
+.nyra-btn-primary:hover:not(:disabled) {
+  background-color: var(--nyra-accent-hover);
+}
+
+.nyra-btn-primary:focus-visible {
+  outline: 2px solid var(--nyra-accent-ring);
+  outline-offset: 2px;
+}
+
+.nyra-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nyra-btn-primary:active:not(:disabled) {
+  background-color: var(--nyra-accent-active);
+}
+
+/** Primary in thread panel — minimal lift (non-rail). */
+.nyra-btn-primary.nyra-btn-primary--panel {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--nyra-accent-foreground) 8%, transparent),
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 6px 20px -14px color-mix(in srgb, var(--nyra-accent) 28%, transparent);
+}
+
+.nyra-chat-shell .nyra-btn-primary.nyra-btn-primary--panel {
+  box-shadow: none;
+}
+
+/** Rail: flush on sidebar — no separate “card” behind the control. */
+.nyra-btn-primary.nyra-btn-primary--rail {
+  box-shadow: none;
+}
+
+/**
+ * Chat secondary — outline; used when Send / Contact are not the single promoted primary.
+ */
+.nyra-btn-chat-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.625rem 1.375rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(228, 228, 231, 0.95);
+  background-color: rgb(250 250 250);
+  color: rgb(100 116 139);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.nyra-chat-shell .nyra-btn-chat-secondary {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  box-shadow: none;
+  letter-spacing: -0.015em;
+}
+
+.nyra-btn-chat-secondary:hover:not(:disabled) {
+  background-color: rgb(244 244 245);
+  border-color: rgb(212 212 216);
+  color: rgb(71 85 105);
+}
+
+.nyra-chat-shell .nyra-btn-chat-secondary:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/** Send + Contact venues: identical geometry in chat (h-11, shared padding, type). */
+.nyra-chat-shell .nyra-btn-primary,
+.nyra-chat-shell .nyra-btn-chat-secondary {
+  box-sizing: border-box;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  max-height: 2.75rem;
+  padding: 0 1.375rem;
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.nyra-btn-chat-secondary:focus-visible {
+  outline: 2px solid var(--nyra-accent-ring);
+  outline-offset: 2px;
+}
+
+.nyra-btn-chat-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nyra-chat-shell .nyra-btn-chat-secondary:disabled:hover {
+  background-color: transparent;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.nyra-btn-primary:disabled:hover {
+  background-color: var(--nyra-accent);
+}
+
+.nyra-chat-shell .nyra-btn-primary:disabled:hover {
+  background-color: var(--nyra-accent);
+}
+
+.nyra-btn-chat-secondary:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+/**
+ * Secondary actions — legacy / marketing. Outline-first; no accent fill.
+ */
+.nyra-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(212 212 212);
+  background-color: rgb(255 255 255);
+  color: rgb(82 82 82);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.nyra-btn-secondary:hover:not(:disabled) {
+  background-color: rgb(250 250 250);
+  border-color: rgb(199 199 199);
+  color: rgb(64 64 64);
+}
+
+.nyra-btn-secondary:focus-visible {
+  outline: 2px solid rgb(163 163 163);
+  outline-offset: 2px;
+}
+
+.nyra-btn-secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.nyra-btn-secondary:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+/** User-authored chat bubble — warm surface, not a filled “button”. */
+.nyra-user-bubble {
+  background-color: var(--nyra-user-bubble-bg);
+  color: var(--nyra-user-bubble-text);
+  border: 1px solid var(--nyra-user-bubble-border);
+  box-shadow: var(--nyra-user-bubble-shadow);
+}
+
+.nyra-chat-shell .nyra-typing-dot {
+  background: rgba(255, 255, 255, 0.38);
+}
+
+/** Venue card — shortlisted: neutral border / tint only (not accent fill). */
+.nyra-chat-shell .nyra-venue-card--selected-surface {
+  border-color: rgba(255, 255, 255, 0.14);
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.nyra-chat-shell .nyra-venue-card--selected-surface:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background-color: rgba(255, 255, 255, 0.055);
+}
+
+/** Shortlist row — same visual language as chat secondary actions (not primary). */
+.nyra-chat-shell .nyra-shortlist-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.nyra-chat-shell .nyra-shortlist-toggle:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.nyra-chat-shell .nyra-shortlist-toggle--selected {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background-color: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.nyra-chat-shell .nyra-shortlist-toggle--selected:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  background-color: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
 }

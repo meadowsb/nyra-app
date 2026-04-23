@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1200" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="li-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d8d2cc"/>
+      <stop offset="50%" stop-color="#b8b0a8"/>
+      <stop offset="100%" stop-color="#8a8278"/>
+    </linearGradient>
+    <linearGradient id="li-window" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#eef2f5"/>
+      <stop offset="100%" stop-color="#c9d2dc"/>
+    </linearGradient>
+    <linearGradient id="li-rust" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#c4785a" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#a85c42" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#8b4a38" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="1200" fill="url(#li-bg)"/>
+  <!-- Large north-light window -->
+  <rect x="140" y="120" width="680" height="520" rx="2" fill="url(#li-window)" opacity="0.85"/>
+  <rect x="160" y="140" width="200" height="480" fill="#dfe5ea" opacity="0.5"/>
+  <rect x="380" y="140" width="200" height="480" fill="#d0d8e0" opacity="0.45"/>
+  <rect x="600" y="140" width="200" height="480" fill="#e8ecf0" opacity="0.55"/>
+  <!-- Mullions -->
+  <rect x="355" y="120" width="6" height="520" fill="#9a9288" opacity="0.4"/>
+  <rect x="575" y="120" width="6" height="520" fill="#9a9288" opacity="0.4"/>
+  <rect x="140" y="360" width="680" height="5" fill="#8a8278" opacity="0.35"/>
+  <rect x="140" y="520" width="680" height="5" fill="#8a8278" opacity="0.35"/>
+  <!-- Exposed beams -->
+  <rect x="0" y="80" width="960" height="36" fill="#6b635a"/>
+  <rect x="0" y="200" width="960" height="24" fill="#5c554c" opacity="0.85"/>
+  <rect x="0" y="680" width="960" height="28" fill="#5a534a" opacity="0.75"/>
+  <rect x="0" y="720" width="960" height="14" fill="#4a443c" opacity="0.6"/>
+  <!-- Concrete floor plane -->
+  <rect x="0" y="720" width="960" height="480" fill="#a09890" opacity="0.35"/>
+  <rect x="0" y="720" width="960" height="2" fill="#4a443c" opacity="0.25"/>
+  <!-- Diagonal light shaft -->
+  <path d="M200 120 L340 120 L520 1200 L280 1200 Z" fill="url(#li-rust)" opacity="0.6"/>
+  <!-- Subtle grid (industrial) -->
+  <g opacity="0.08" stroke="#3d3830" stroke-width="1">
+    <line x1="0" y1="900" x2="960" y2="900"/>
+    <line x1="0" y1="1000" x2="960" y2="1000"/>
+    <line x1="240" y1="720" x2="240" y2="1200"/>
+    <line x1="480" y1="720" x2="480" y2="1200"/>
+    <line x1="720" y1="720" x2="720" y2="1200"/>
+  </g>
+</svg>

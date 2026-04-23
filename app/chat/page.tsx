@@ -1,19 +1,27 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSearchParams } from "next/navigation";
 
-type Venue = {
-  id: string;
-  name: string;
-  location: string;
-  price: string;
-  tag: string;
-  whyFit: string;
-};
+import { ChatHeader } from "@/components/ChatHeader";
+import { ChatInputBar } from "@/components/ChatInputBar";
+import { ChatMessages, type Message } from "@/components/ChatMessages";
+import { SelectedVenuesSidebar } from "@/components/SelectedVenuesSidebar";
+import { usePrefersReducedMotion } from "@/components/AssistantStreamedText";
+import type { Venue } from "@/components/VenueCard";
 
-/** Total user messages allowed before the unlock card replaces the composer. */
-const FREE_USER_MESSAGE_LIMIT = 2;
+/** User-authored composer sends allowed before the unlock card (intro seed does not count). */
+const FREE_USER_MESSAGE_LIMIT = 3;
+
+/** Seeded opener includes this many user bubbles; they do not count toward FREE_USER_MESSAGE_LIMIT. */
+const INTRO_USER_MESSAGE_COUNT = 1;
 
 const mockVenues: Venue[] = [
   {
@@ -22,8 +30,12 @@ const mockVenues: Venue[] = [
     location: "Downtown Miami",
     price: "$20k–$30k",
     tag: "Modern",
+    highlights: ["City views", "Blank-canvas space"] as const,
+    vibe: "Light-filled modern space with skyline glass",
+    capacity: "Best for 70–130 guests",
     whyFit:
       "Ideal for sleek mid-size weddings that want a blank-canvas space with city energy.",
+    heroPreset: "modern-city",
   },
   {
     id: "2",
@@ -31,8 +43,12 @@ const mockVenues: Venue[] = [
     location: "Miami Beach",
     price: "$18k–$28k",
     tag: "Waterfront",
+    highlights: ["Outdoor-friendly", "Sunset light"] as const,
+    vibe: "Open terrace, salt air, and golden-hour light",
+    capacity: "Best for 45–95 guests",
     whyFit:
       "Perfect for sunset ceremonies with an easy indoor-outdoor flow and ocean breeze.",
+    heroPreset: "waterfront",
   },
   {
     id: "3",
@@ -40,20 +56,14 @@ const mockVenues: Venue[] = [
     location: "Wynwood",
     price: "$15k–$25k",
     tag: "Minimal",
+    highlights: ["Blank-canvas space", "Outdoor-friendly"] as const,
+    vibe: "North-lit loft with beams and polished concrete",
+    capacity: "Best for 30–70 guests",
     whyFit:
       "Best for intimate, design-forward weddings that want an artsy space with minimal décor.",
+    heroPreset: "loft-industrial",
   },
 ];
-
-type Message =
-  | { id: string; role: "user"; text: string }
-  | {
-      id: string;
-      role: "assistant";
-      text: string;
-      venues?: Venue[];
-      isThinking?: boolean;
-    };
 
 type QuerySignals = {
   guestCount?: number;
@@ -136,10 +146,10 @@ function parseQuerySignals(query: string): QuerySignals {
 function buildConciergeIntro(query: string) {
   const { guestCount, location, style, eventType } = parseQuerySignals(query);
 
-  const guestCountPhrase = guestCount ? `${guestCount}` : "TBD";
-  const locationPhrase = location ? location : "your area";
-  const stylePhrase = style ? style : "your style";
-  const eventPhrase = eventType ? eventType : "event";
+  const occasion = eventType ?? "event";
+  const guestsLabel = guestCount != null ? `~${guestCount} guests` : "guest count (TBD)";
+  const locationLabel = location ?? "location (TBD)";
+  const styleLabel = style ?? "style (TBD)";
 
   const hash = (s: string) => {
     let h = 0;
@@ -147,18 +157,50 @@ function buildConciergeIntro(query: string) {
     return h;
   };
 
+  const spine = `For your ${occasion}, I’m anchoring on ${guestsLabel}, ${locationLabel}, and ${styleLabel} as the spine—so the shortlist isn’t “on theme,” it’s internally consistent.`;
+
+  let why: string;
+  if (guestCount != null && location && style) {
+    why = `I picked these because they each hold ~${guestCount} without dead corners, read ${style} from the architecture (not rented props), and sit in ${location} where Saturday-night logistics won’t quietly capsize the flow.`;
+  } else if (guestCount != null && location) {
+    why = `I picked these because they’re sized for ~${guestCount} and grounded in ${location}; ${
+      style
+        ? `with ${style} in mind, I avoided rooms that would need a heavy disguise.`
+        : "once style locks, I’ll swap anything that fights that direction."
+    }`;
+  } else if (guestCount != null && style) {
+    why = `I picked these because the capacity band matches ~${guestCount} and the room reads ${style} honestly; ${
+      location
+        ? `I’m treating ${location} as the geography to stress-test next.`
+        : "tell me the city next so I can stress-test geography, not vibes."
+    }`;
+  } else if (location && style) {
+    why = `I picked these because ${location} and ${style} narrow the field fast; ${
+      guestCount != null
+        ? `I’m also watching how ~${guestCount} guests move through ceremony, dinner, and dancing without bottlenecks.`
+        : "guest count is the next lever that changes which rooms actually work."
+    }`;
+  } else {
+    why = `I picked these because the throughline is spatial discipline—so when ${guestsLabel}, ${locationLabel}, and ${styleLabel} firm up, we’re adjusting details instead of restarting from zero.`;
+  }
+
   const closers = [
-    `Want me to tighten this toward a specific vibe within ${stylePhrase} (more intimate vs. more grand)?`,
-    `If you share any must-haves (budget, indoor/outdoor, parking), I’ll refine the list even further.`,
-    `If you tell me what “perfect” looks like for your ${stylePhrase} vibe, I can dial these in fast.`,
+    guestCount != null && style
+      ? `If you want the night to feel sharper or softer at ~${guestCount} within that ${style} lane, say which—and I’ll re-rank.`
+      : location
+        ? `If ${location} can flex by one neighborhood without changing the brief, tell me which boundary is negotiable.`
+        : `Reply with one hard constraint (budget band, indoor/outdoor, or ceremony time) and I’ll re-rank against it.`,
+    guestCount != null
+      ? `Tell me if ~${guestCount} is a hard ceiling or a planning number—capacity math changes a few quiet “great” venues.`
+      : `Tell me your best estimate on headcount—even a range—because it changes which rooms stay honest.`,
+    style
+      ? `If ${style} for you means lighter finishes (or heavier texture), say so—I’ll bias texture instead of square footage.`
+      : `If you already know the ceremony vibe (standing vs. seated, short vs. long), that one detail reshuffles this list faster than adjectives.`,
   ] as const;
+
   const closer = closers[hash(query) % closers.length];
 
-  const first = `For your ${eventPhrase} in ${locationPhrase} with a guest count of ${guestCountPhrase} and a ${stylePhrase} style, I pulled venues that match the feel without forcing a one-size-fits-all pick.`;
-  const second =
-    "For your size, I prioritized venues that can comfortably host without feeling empty.";
-
-  return `${first} ${second} ${closer}`;
+  return `${spine} ${why} ${closer}`;
 }
 
 const THINKING_MESSAGES = [
@@ -183,30 +225,41 @@ const VENUE_SELECTION_REQUIRED_HINT =
 
 const VENUE_CARD_PULSE_MS = 1400;
 
+/** Shortlist block fade/slide (`nyraResultsPackIn` in ThinkingStyles). */
+const NYRA_RESULTS_PACK_DURATION_MS = 460;
+/** Max `animation-delay` on venue card intros + their duration (ThinkingStyles). */
+const NYRA_VENUE_CARD_INTRO_TAIL_MS = 210 + 500;
+/** Extra time for layout after intros before scrollIntoView. */
+const NYRA_VENUES_SCROLL_SETTLE_MS = 72;
+/** Wait for shortlist layout/animations after text completes before scrolling to cards. */
+const VENUE_SCROLL_AFTER_TEXT_COMPLETE_MS =
+  NYRA_RESULTS_PACK_DURATION_MS + NYRA_VENUE_CARD_INTRO_TAIL_MS + NYRA_VENUES_SCROLL_SETTLE_MS;
+
+function buildInitialMessages(query: string): Message[] {
+  return [
+    {
+      id: "u1",
+      role: "user",
+      text: query,
+    },
+    {
+      id: "a1",
+      role: "assistant",
+      text: buildConciergeIntro(query),
+      venues: mockVenues,
+    },
+  ];
+}
+
 const ChatPageContent = () => {
   const searchParams = useSearchParams();
   const initialQuery =
     searchParams.get("query")?.trim() ||
     "Looking for a modern venue for 80 guests in Miami";
 
-  const initialMessages = useMemo<Message[]>(
-    () => [
-      {
-        id: "u1",
-        role: "user",
-        text: initialQuery,
-      },
-      {
-        id: "a1",
-        role: "assistant",
-        text: buildConciergeIntro(initialQuery),
-        venues: mockVenues,
-      },
-    ],
-    [initialQuery]
+  const [messages, setMessages] = useState<Message[]>(() =>
+    buildInitialMessages(initialQuery)
   );
-
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [selectedVenueIds, setSelectedVenueIds] = useState<string[]>([]);
   const [isThinking, setIsThinking] = useState(false);
@@ -222,23 +275,28 @@ const ChatPageContent = () => {
   >(null);
   const [venueSelectionHint, setVenueSelectionHint] = useState<string | null>(null);
   const [pulseVenueCards, setPulseVenueCards] = useState(false);
+  const [isTextStreaming, setIsTextStreaming] = useState(false);
+  const [isTextComplete, setIsTextComplete] = useState(false);
   const venuePulseTimeoutRef = useRef<number | undefined>(undefined);
   const venueHintTimeoutRef = useRef<number | undefined>(undefined);
+  const venueTurnAssistantIdRef = useRef<string | null>(null);
   const thinkingBubbleRef = useRef<HTMLDivElement | null>(null);
   const latestMessageRef = useRef<HTMLDivElement | null>(null);
   const latestAssistantMessageRef = useRef<HTMLDivElement | null>(null);
   const latestAssistantResultRef = useRef<HTMLDivElement | null>(null);
   const previousIsThinkingRef = useRef(isThinking);
-  const previousUserMessageCountRef = useRef(0);
+  const previousUserMessageCountRef = useRef(INTRO_USER_MESSAGE_COUNT);
 
   const isDev = process.env.NODE_ENV === "development";
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const userMessageCount = messages.filter((m) => m.role === "user").length;
+  const billableUserMessages = Math.max(0, userMessageCount - INTRO_USER_MESSAGE_COUNT);
   const freeMessagesRemaining = Math.max(
     0,
-    FREE_USER_MESSAGE_LIMIT - userMessageCount
+    FREE_USER_MESSAGE_LIMIT - billableUserMessages
   );
-  const isPaywalled = userMessageCount >= FREE_USER_MESSAGE_LIMIT;
+  const isPaywalled = billableUserMessages >= FREE_USER_MESSAGE_LIMIT;
 
   const handleDevReset = () => {
     if (!isDev) return;
@@ -247,6 +305,7 @@ const ChatPageContent = () => {
     if (venueHintTimeoutRef.current) window.clearTimeout(venueHintTimeoutRef.current);
     venuePulseTimeoutRef.current = undefined;
     venueHintTimeoutRef.current = undefined;
+    venueTurnAssistantIdRef.current = null;
 
     try {
       DEV_RESET_STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key));
@@ -254,21 +313,52 @@ const ChatPageContent = () => {
       // ignore
     }
 
-    setMessages([
-      {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        text: buildConciergeIntro(initialQuery),
-        venues: mockVenues,
-      },
-    ]);
+    setMessages(buildInitialMessages(initialQuery));
     setInput("");
     setSelectedVenueIds([]);
     setVenueSelectionHint(null);
     setPulseVenueCards(false);
+    setIsTextStreaming(false);
+    setIsTextComplete(false);
     setIsThinking(false);
     setThinkingMessageIndex(0);
+    setThinkingExitMessageId(null);
+    setAssistantRevealMessageId(null);
   };
+
+  // Full reset on each browser load / dev server entry (not on every state update).
+  useEffect(() => {
+    if (venuePulseTimeoutRef.current) window.clearTimeout(venuePulseTimeoutRef.current);
+    if (venueHintTimeoutRef.current) window.clearTimeout(venueHintTimeoutRef.current);
+    venuePulseTimeoutRef.current = undefined;
+    venueHintTimeoutRef.current = undefined;
+    venueTurnAssistantIdRef.current = null;
+
+    try {
+      DEV_RESET_STORAGE_KEYS.forEach((key) => window.localStorage.removeItem(key));
+    } catch {
+      // ignore
+    }
+
+    const refreshed = buildInitialMessages(initialQuery);
+    queueMicrotask(() => {
+      setMessages(refreshed);
+      setSelectedVenueIds([]);
+      setInput("");
+      setVenueSelectionHint(null);
+      setPulseVenueCards(false);
+      setIsTextStreaming(false);
+      setIsTextComplete(false);
+      setIsThinking(false);
+      setThinkingMessageIndex(0);
+      setThinkingExitMessageId(null);
+      setAssistantRevealMessageId(null);
+
+      previousUserMessageCountRef.current = refreshed.filter((m) => m.role === "user").length;
+      previousIsThinkingRef.current = false;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run once on mount; initialQuery is first paint only
+  }, []);
 
   useEffect(() => {
     if (!isThinking) return;
@@ -298,6 +388,27 @@ const ChatPageContent = () => {
     };
   }, [isThinking]);
 
+  /** New assistant turn with a shortlist: arm streaming / completion before venues mount. */
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== "assistant" || last.isThinking || !last.venues?.length) return;
+
+    queueMicrotask(() => {
+      if (prefersReducedMotion) {
+        venueTurnAssistantIdRef.current = last.id;
+        setIsTextStreaming(false);
+        setIsTextComplete(true);
+        return;
+      }
+
+      if (venueTurnAssistantIdRef.current !== last.id) {
+        venueTurnAssistantIdRef.current = last.id;
+        setIsTextStreaming(true);
+        setIsTextComplete(false);
+      }
+    });
+  }, [messages, prefersReducedMotion]);
+
   useEffect(() => {
     const userJustAdded =
       userMessageCount > (previousUserMessageCountRef.current ?? 0);
@@ -309,6 +420,8 @@ const ChatPageContent = () => {
 
     if (!userJustAdded && !thinkingJustStarted && !thinkingJustEnded) return;
 
+    const lastMessage = messages[messages.length - 1];
+
     const raf = window.requestAnimationFrame(() => {
       if (thinkingJustStarted) {
         thinkingBubbleRef.current?.scrollIntoView({
@@ -319,10 +432,12 @@ const ChatPageContent = () => {
       }
 
       if (thinkingJustEnded) {
-        latestAssistantMessageRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
+        if (lastMessage?.role === "assistant") {
+          latestAssistantMessageRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }
         return;
       }
 
@@ -330,36 +445,78 @@ const ChatPageContent = () => {
     });
 
     return () => window.cancelAnimationFrame(raf);
-  }, [userMessageCount, isThinking]);
+  }, [userMessageCount, isThinking, messages]);
 
+  /** While text streams, keep the assistant bubble in view (not the hidden shortlist). */
   useEffect(() => {
-    // The "previous" ref is updated in the scrolling effect above, so compute
-    // completion based on message state instead of the ref.
-    if (isThinking) return;
-
-    const lastMessage = messages[messages.length - 1];
-    const assistantVenuesReady =
-      !!lastMessage &&
-      lastMessage.role === "assistant" &&
-      !!lastMessage.venues?.length;
-
-    if (!assistantVenuesReady) return;
+    if (!isTextStreaming || isTextComplete) return;
 
     const raf = window.requestAnimationFrame(() => {
-      window.setTimeout(() => {
-        latestAssistantResultRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 50);
+      latestAssistantMessageRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     });
 
     return () => window.cancelAnimationFrame(raf);
-  }, [isThinking, messages]);
+  }, [isTextStreaming, isTextComplete]);
+
+  /** After streaming completes, shortlist mounts — scroll once the grid is measurable. */
+  useEffect(() => {
+    if (!isTextComplete || isThinking) return;
+
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== "assistant" || !last.venues?.length) return;
+
+    const waitMs = prefersReducedMotion ? 48 : VENUE_SCROLL_AFTER_TEXT_COMPLETE_MS;
+
+    const timeoutId = window.setTimeout(() => {
+      const scrollWhenLaidOut = (attempt: number) => {
+        const section = latestAssistantResultRef.current;
+        if (!section) return;
+
+        const grid = section.querySelector<HTMLElement>(".nyra-venues-grid");
+        const minHeight = 80;
+        const gridReady = grid != null && grid.offsetHeight >= minHeight;
+
+        if (!gridReady && attempt < 12) {
+          window.requestAnimationFrame(() => scrollWhenLaidOut(attempt + 1));
+          return;
+        }
+
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            latestAssistantResultRef.current?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          });
+        });
+      };
+
+      window.requestAnimationFrame(() => scrollWhenLaidOut(0));
+    }, waitMs);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isTextComplete, isThinking, prefersReducedMotion, messages]);
+
+  const handleAssistantStreamProgress = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      latestAssistantMessageRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, []);
+
+  const handleAssistantStreamComplete = useCallback(() => {
+    setIsTextStreaming(false);
+    setIsTextComplete(true);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (userMessageCount >= FREE_USER_MESSAGE_LIMIT || isThinking) return;
+    if (billableUserMessages >= FREE_USER_MESSAGE_LIMIT || isThinking) return;
     const trimmed = input.trim();
     if (!trimmed) return;
 
@@ -439,7 +596,14 @@ const ChatPageContent = () => {
     }, 6000);
 
     window.requestAnimationFrame(() => {
-      latestAssistantResultRef.current?.scrollIntoView({
+      if (isTextComplete && latestAssistantResultRef.current) {
+        latestAssistantResultRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        return;
+      }
+      latestAssistantMessageRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
@@ -464,367 +628,63 @@ const ChatPageContent = () => {
     return map;
   }, [messages]);
 
+  const composerHasText = input.trim().length > 0;
+
   return (
-    <main className="min-h-screen bg-neutral-50 font-sans text-neutral-900 antialiased">
-      <div className="mx-auto flex min-h-screen max-w-6xl gap-10 px-5 py-10 sm:px-8 lg:gap-12 lg:px-10">
-        <section className="flex min-w-0 flex-1 flex-col min-h-0">
-          <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-neutral-400">
-                Concierge
-              </p>
-              <h1 className="mt-1 text-xl font-semibold tracking-tight text-neutral-950 sm:text-2xl">
-                Nyra
-              </h1>
-            </div>
-            <div className="flex shrink-0 items-center justify-end gap-3">
-              {isDev ? (
-                <button
-                  type="button"
-                  onClick={handleDevReset}
-                  className="rounded-full border border-neutral-200/80 bg-white/80 px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm shadow-neutral-900/5 backdrop-blur-sm transition-colors hover:bg-white"
-                >
-                  Reset
-                </button>
-              ) : null}
-              {!isPaywalled ? (
-                <p className="rounded-full border border-neutral-200/80 bg-white/80 px-3 py-1.5 text-xs font-medium text-neutral-600 shadow-sm shadow-neutral-900/5 backdrop-blur-sm">
-                  {freeMessagesRemaining} free message
-                  {freeMessagesRemaining === 1 ? "" : "s"} remaining
-                </p>
-              ) : null}
-            </div>
-          </header>
-
-          <div className="flex-1 min-h-0 overflow-y-auto pb-4">
-            <div className="flex min-h-full flex-col justify-end gap-8">
-              {messages.map((message, index) => (
-                <div
-                  key={message.id}
-                  ref={index === messages.length - 1 ? latestMessageRef : undefined}
-                  className={
-                    message.role === "user"
-                      ? "flex flex-col items-end text-right"
-                      : ""
-                  }
-                >
-                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
-                    {message.role === "user" ? "You" : "Nyra"}
-                  </p>
-
-                  <div
-                    ref={
-                      message.role === "assistant" && message.isThinking
-                        ? thinkingBubbleRef
-                        : message.role === "assistant" && index === messages.length - 1
-                          ? latestAssistantMessageRef
-                          : undefined
-                    }
-                    className={`relative max-w-[min(100%,42rem)] text-[15px] leading-relaxed tracking-[-0.01em] transition-[opacity,transform] duration-300 ease-out tracking-[-0.01em] ${
-                      message.role === "user"
-                        ? "rounded-2xl bg-neutral-900 px-5 py-3.5 text-white shadow-md shadow-neutral-900/10"
-                        : message.isThinking
-                          ? "rounded-2xl border border-neutral-200/70 bg-neutral-100/70 px-5 py-3.5 text-neutral-700 shadow-sm shadow-neutral-900/[0.04]"
-                          : "rounded-2xl border border-neutral-100 bg-white px-5 py-3.5 text-neutral-800 shadow-sm shadow-neutral-900/[0.04]"
-                    }`}
-                    style={
-                      message.role === "assistant" && message.isThinking
-                        ? { animation: "nyraThinkingBubbleIn 220ms ease-out both" }
-                        : message.role === "assistant" &&
-                            assistantRevealMessageId === message.id
-                          ? { animation: "nyraAssistantReveal 340ms ease-out both" }
-                        : undefined
-                    }
-                  >
-                    {message.role === "assistant" &&
-                    !message.isThinking &&
-                    thinkingExitMessageId === message.id ? (
-                      <div
-                        aria-hidden
-                        className="pointer-events-none absolute inset-0"
-                        style={{ animation: "nyraThinkingBubbleOut 320ms ease-in both" }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span
-                            aria-hidden
-                            className="flex items-center gap-1.5"
-                            style={{ opacity: 0.85 }}
-                          >
-                            <span className="nyra-typing-dot" />
-                            <span className="nyra-typing-dot nyra-typing-dot--2" />
-                            <span className="nyra-typing-dot nyra-typing-dot--3" />
-                          </span>
-                          <span className="block">
-                            {THINKING_MESSAGES[thinkingMessageIndex]}
-                          </span>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {message.role === "assistant" && message.isThinking ? (
-                      <div className="flex items-center gap-3">
-                        <span
-                          aria-hidden
-                          className="flex items-center gap-1.5"
-                          style={{ opacity: 0.85 }}
-                        >
-                          <span className="nyra-typing-dot" />
-                          <span className="nyra-typing-dot nyra-typing-dot--2" />
-                          <span className="nyra-typing-dot nyra-typing-dot--3" />
-                        </span>
-                        <span
-                          key={thinkingMessageIndex}
-                          className="block will-change-[opacity,transform]"
-                          style={{
-                            animation: `nyraThinkingMessage ${thinkingMessageRotationMs}ms ease-in-out both`,
-                          }}
-                        >
-                          {THINKING_MESSAGES[thinkingMessageIndex]}
-                        </span>
-                      </div>
-                    ) : (
-                      message.text
-                    )}
-                  </div>
-
-                  {message.role === "assistant" && message.venues ? (
-                    <>
-                      <p className="mt-4 max-w-[min(100%,42rem)] text-sm leading-relaxed text-neutral-500">
-                        These are the strongest matches based on your criteria:
-                      </p>
-                      <div
-                        ref={
-                          index === messages.length - 1
-                            ? latestAssistantResultRef
-                            : undefined
-                        }
-                        className="nyra-venues-reveal mt-4 grid gap-4 sm:grid-cols-2"
-                        style={{
-                          animation: "nyraVenuesReveal 420ms ease-out both",
-                          animationDelay: "70ms",
-                        }}
-                      >
-                        {message.venues.map((venue) => {
-                          const selected = selectedVenueIds.includes(venue.id);
-
-                          return (
-                            <div
-                              key={venue.id}
-                              className={`group relative rounded-2xl border p-5 shadow-sm ring-1 transition-all duration-200 hover:shadow-md hover:shadow-neutral-900/[0.08] ${
-                                selected
-                                  ? "border-neutral-300 bg-neutral-50 shadow-neutral-900/[0.08] ring-neutral-900/5"
-                                  : "border-neutral-200/70 bg-white shadow-neutral-900/[0.06] ring-black/[0.02]"
-                              } ${
-                                pulseVenueCards
-                                  ? "nyra-venue-card--pulse ring-neutral-900/25"
-                                  : ""
-                              }`}
-                            >
-                              {selected ? (
-                                <span
-                                  aria-hidden
-                                  className="absolute right-4 top-4 inline-flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-[12px] font-semibold leading-none text-white shadow-sm shadow-neutral-900/20"
-                                >
-                                  ✓
-                                </span>
-                              ) : null}
-                              <div className="flex items-start justify-between gap-3">
-                                <h3 className="text-[15px] font-semibold leading-snug tracking-tight text-neutral-950">
-                                  {venue.name}
-                                </h3>
-                                <span className="shrink-0 rounded-full border border-neutral-200/80 bg-neutral-50 px-2.5 py-0.5 text-[11px] font-medium text-neutral-600">
-                                  {venue.tag}
-                                </span>
-                              </div>
-                              <p className="mt-2 text-sm leading-relaxed text-neutral-500">
-                                {venue.location}
-                                <span className="text-neutral-300"> · </span>
-                                {venue.price}
-                              </p>
-                              <p className="mt-1 text-sm leading-relaxed text-neutral-500">
-                                {venue.whyFit}
-                              </p>
-
-                              <button
-                                type="button"
-                                onClick={() => toggleVenue(venue.id)}
-                                className={`mt-4 w-full rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                                  selected
-                                    ? "bg-neutral-900 text-white shadow-sm shadow-neutral-900/15"
-                                    : "border border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50"
-                                }`}
-                              >
-                                {selected ? "Selected" : "Select"}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-              ))}
-            </div>
+    <main className="nyra-chat-shell h-svh max-h-svh min-h-0 overflow-hidden bg-chat-canvas font-sans text-chat-text-primary antialiased">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1200px] flex-col lg:mx-0 lg:max-w-none lg:flex-row lg:divide-x lg:divide-chat-border lg:bg-chat-pane">
+        <section className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col bg-chat-pane px-2 sm:px-3">
+          <div className="shrink-0 px-4 sm:px-[1.125rem]">
+            <ChatHeader
+              isDev={isDev}
+              onDevReset={handleDevReset}
+              isPaywalled={isPaywalled}
+              freeMessagesRemaining={freeMessagesRemaining}
+            />
           </div>
 
-          <div className="sticky bottom-0 border-t border-neutral-200/60 bg-neutral-50/95 py-5 backdrop-blur-md supports-[backdrop-filter]:bg-neutral-50/80">
-            {isPaywalled ? (
-              <>
-                <p className="mb-4 text-sm leading-relaxed text-neutral-600">
-                  {
-                    "If you'd like, I can reach out to these venues and get real pricing and availability for you."
-                  }
-                </p>
-                <div className="relative overflow-hidden rounded-2xl border border-neutral-200/80 bg-white p-7 shadow-[0_1px_0_rgba(0,0,0,0.04),0_18px_48px_-12px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.03] sm:p-9">
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-neutral-200 to-transparent"
-                  />
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
-                    Your search
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-neutral-700">
-                    We found 18 venues that match your request
-                  </p>
-                  <h2 className="mt-3 max-w-2xl text-xl font-semibold tracking-[-0.02em] text-neutral-950 sm:text-2xl sm:leading-[1.2]">
-                    Get real pricing & availability from your top matches
-                  </h2>
-                  <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-neutral-600">
-                    We contact venues for you, confirm real pricing + open date
-                    windows, then summarize everything in a decision-ready report.
-                  </p>
-                  <p className="mt-3 max-w-xl text-sm leading-relaxed text-neutral-600">
-                    Skip hours of emailing venues. No back-and-forth needed.
-                  </p>
-                  <p className="mt-7 text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
-                    What happens next
-                  </p>
-                  <ol className="mt-3 space-y-3.5">
-                    {[
-                      "We reach out to your selected venues",
-                      "We gather pricing, availability, and fit",
-                      "You receive a curated report in 24–72 hours",
-                    ].map((item, index) => (
-                      <li
-                        key={item}
-                        className="flex gap-3.5 text-[15px] leading-snug text-neutral-800"
-                      >
-                        <span
-                          aria-hidden
-                          className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-[10px] font-semibold leading-none text-white"
-                        >
-                          {index + 1}
-                        </span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ol>
-                  <div className="mt-9">
-                    <button
-                      type="button"
-                      onClick={handleVenueReportCta}
-                      className="w-full rounded-2xl bg-neutral-900 px-6 py-4 text-[15px] font-semibold tracking-tight text-white shadow-lg shadow-neutral-900/25 transition-[transform,opacity] hover:opacity-95 active:scale-[0.99] sm:w-auto sm:min-w-[220px] sm:px-10"
-                    >
-                      Get my venue report — $99
-                    </button>
-                    {venueSelectionHint ? (
-                      <p
-                        className="mt-3 text-sm font-medium text-amber-800"
-                        role="status"
-                        aria-live="polite"
-                      >
-                        {venueSelectionHint}
-                      </p>
-                    ) : null}
-                    <p className="mt-2 text-[11px] leading-snug text-neutral-500">
-                      One-time payment. No subscription.
-                    </p>
-                    <p className="mt-2.5 max-w-xl text-xs leading-relaxed text-neutral-500">
-                      We limit outreach requests each week to ensure quality.
-                    </p>
-                  </div>
-                  <p className="mt-4 text-[11px] leading-relaxed text-neutral-400">
-                    Used by couples planning weddings of all sizes.
-                  </p>
-                  <div className="mt-6 flex flex-col gap-3 border-t border-neutral-200/70 pt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-                    <p className="text-xs leading-relaxed text-neutral-500">
-                      Delivered in 24–72 hours · no back-and-forth emails needed
-                    </p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <form onSubmit={handleSubmit} className="w-full min-w-0">
-                <div className="flex gap-3">
-                  <input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Refine your search..."
-                    className="min-h-[48px] flex-1 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-[15px] text-neutral-900 shadow-sm shadow-neutral-900/[0.03] outline-none ring-neutral-900/5 transition-[box-shadow,border-color] placeholder:text-neutral-400 focus:border-neutral-300 focus:ring-4"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isThinking}
-                    className="shrink-0 rounded-2xl bg-neutral-900 px-6 py-3 text-sm font-medium text-white shadow-md shadow-neutral-900/15 transition-opacity hover:opacity-90"
-                  >
-                    Send
-                  </button>
-                </div>
-              </form>
-            )}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-chat-border bg-chat-pane">
+            <ChatMessages
+              messages={messages}
+              latestMessageRef={latestMessageRef}
+              thinkingBubbleRef={thinkingBubbleRef}
+              latestAssistantMessageRef={latestAssistantMessageRef}
+              latestAssistantResultRef={latestAssistantResultRef}
+              selectedVenueIds={selectedVenueIds}
+              pulseVenueCards={pulseVenueCards}
+              onToggleVenue={toggleVenue}
+              venueSelectionHint={venueSelectionHint}
+              onVenueReportCta={handleVenueReportCta}
+              composerHasText={composerHasText}
+              thinkingMessages={THINKING_MESSAGES}
+              thinkingMessageIndex={thinkingMessageIndex}
+              thinkingMessageRotationMs={thinkingMessageRotationMs}
+              thinkingExitMessageId={thinkingExitMessageId}
+              assistantRevealMessageId={assistantRevealMessageId}
+              isTextComplete={isTextComplete}
+              onAssistantStreamProgress={handleAssistantStreamProgress}
+              onAssistantStreamComplete={handleAssistantStreamComplete}
+            />
+
+            <ChatInputBar
+              isPaywalled={isPaywalled}
+              isThinking={isThinking}
+              input={input}
+              onInputChange={setInput}
+              onSubmit={handleSubmit}
+              venueSelectionHint={venueSelectionHint}
+              onVenueReportCta={handleVenueReportCta}
+            />
           </div>
         </section>
 
-        <aside className="hidden w-[280px] shrink-0 lg:block">
-          <div className="sticky top-10 rounded-2xl border border-neutral-200/70 bg-white p-6 shadow-sm shadow-neutral-900/[0.05] ring-1 ring-black/[0.02]">
-            <p className="text-xs leading-relaxed text-neutral-500">
-              Select venues to include in your outreach report
-            </p>
-            <h2 className="text-sm font-semibold tracking-tight text-neutral-950">
-              Selected venues
-            </h2>
-            <p className="mt-1 text-xs text-neutral-500">
-              Shortlist to contact in one step.
-            </p>
-
-            {selectedVenueIds.length === 0 ? (
-              <p className="mt-6 text-sm leading-relaxed text-neutral-400">
-                No venues selected
-              </p>
-            ) : (
-              <ul className="mt-6 space-y-3">
-                {selectedVenueIds.map((id) => {
-                  const venue = venueById.get(id);
-                  return (
-                    <li
-                      key={id}
-                      className="text-sm font-medium leading-snug text-neutral-800"
-                    >
-                      {venue?.name}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-
-            <button
-              type="button"
-              onClick={handleVenueReportCta}
-              className="mt-8 w-full rounded-xl bg-neutral-900 py-2.5 text-sm font-medium text-white shadow-sm shadow-neutral-900/20 transition-opacity hover:opacity-95"
-            >
-              Contact venues
-            </button>
-            {venueSelectionHint ? (
-              <p
-                className="mt-3 text-sm font-medium text-amber-800"
-                role="status"
-                aria-live="polite"
-              >
-                {venueSelectionHint}
-              </p>
-            ) : null}
-          </div>
-        </aside>
+        <SelectedVenuesSidebar
+          selectedVenueIds={selectedVenueIds}
+          venueById={venueById}
+          venueSelectionHint={venueSelectionHint}
+          onVenueReportCta={handleVenueReportCta}
+          composerHasText={composerHasText}
+        />
       </div>
     </main>
   );
@@ -859,21 +719,43 @@ const ThinkingStyles = () => (
       100% { opacity: 1; transform: translateY(0px); }
     }
 
-    @keyframes nyraVenuesReveal {
-      0% { opacity: 0; transform: translateY(4px); max-height: 0px; }
-      100% { opacity: 1; transform: translateY(0px); max-height: 800px; }
+    @keyframes nyraResultsPackIn {
+      0% { opacity: 0; transform: translateY(4px); }
+      100% { opacity: 1; transform: translateY(0); }
     }
+
+    @keyframes nyraVenueCardIntro {
+      0% { opacity: 0; transform: translateY(6px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .nyra-results-pack {
+      opacity: 0;
+      animation: nyraResultsPackIn 460ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .nyra-venue-card-intro {
+      opacity: 0;
+      animation: nyraVenueCardIntro 500ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .nyra-venue-card-intro--1 { animation-delay: 80ms; }
+    .nyra-venue-card-intro--2 { animation-delay: 140ms; }
+    .nyra-venue-card-intro--3 { animation-delay: 200ms; }
+    .nyra-venue-card-intro--4 { animation-delay: 260ms; }
+    .nyra-venue-card-intro--5 { animation-delay: 320ms; }
+    .nyra-venue-card-intro--6 { animation-delay: 380ms; }
 
     @keyframes nyraVenueSelectHintPulse {
       0%, 100% {
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-        border-color: rgba(229, 229, 229, 0.85);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+        border-color: rgba(255, 255, 255, 0.08);
       }
       50% {
         box-shadow:
-          0 0 0 3px rgba(23, 23, 23, 0.1),
-          0 10px 28px -8px rgba(0, 0, 0, 0.12);
-        border-color: rgba(163, 163, 163, 0.95);
+          0 0 0 1px rgba(255, 255, 255, 0.12),
+          0 12px 32px -10px rgba(0, 0, 0, 0.55);
+        border-color: rgba(255, 255, 255, 0.16);
       }
     }
 
@@ -881,9 +763,32 @@ const ThinkingStyles = () => (
       animation: nyraVenueSelectHintPulse 420ms ease-in-out 2;
     }
 
-    .nyra-venues-reveal {
-      overflow: hidden;
-      will-change: opacity, transform, max-height;
+    @keyframes nyraVenueSelectedLift {
+      0% {
+        transform: translateY(2px) scale(0.994);
+      }
+      100% {
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes nyraVenueSelectedCheckIn {
+      0% {
+        opacity: 0;
+        transform: scale(0.86);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .nyra-venue-card--selected {
+      animation: nyraVenueSelectedLift 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .nyra-venue-selected-check {
+      animation: nyraVenueSelectedCheckIn 300ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
     }
 
     .nyra-typing-dot {
@@ -898,13 +803,19 @@ const ThinkingStyles = () => (
     .nyra-typing-dot--3 { animation-delay: 280ms; }
 
     @media (prefers-reduced-motion: reduce) {
-      .nyra-venues-reveal {
+      .nyra-results-pack,
+      .nyra-venue-card-intro {
         animation: none !important;
-        max-height: none !important;
-        overflow: visible !important;
+        opacity: 1 !important;
+        transform: none !important;
       }
 
       .nyra-venue-card--pulse {
+        animation: none !important;
+      }
+
+      .nyra-venue-card--selected,
+      .nyra-venue-selected-check {
         animation: none !important;
       }
 
@@ -918,7 +829,7 @@ const ThinkingStyles = () => (
 const ChatPage = () => (
   <Suspense
     fallback={
-      <main className="min-h-screen bg-neutral-50 font-sans text-neutral-900 antialiased" />
+      <main className="nyra-chat-shell h-svh max-h-svh min-h-0 overflow-hidden bg-chat-canvas font-sans text-chat-text-primary antialiased" />
     }
   >
     <ThinkingStyles />

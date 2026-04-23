@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1200" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="wf-sky" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0%" stop-color="#fde8dc"/>
+      <stop offset="35%" stop-color="#f5c4a8"/>
+      <stop offset="62%" stop-color="#d4a574"/>
+      <stop offset="100%" stop-color="#8fb8c4"/>
+    </linearGradient>
+    <linearGradient id="wf-water" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#7eb3c4"/>
+      <stop offset="45%" stop-color="#5a9aaa"/>
+      <stop offset="100%" stop-color="#3d7a8c"/>
+    </linearGradient>
+    <linearGradient id="wf-sun" x1="0.5" y1="0.5" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff5e6" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="#ffd4a8" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#f5a070" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="wf-soft" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+  </defs>
+  <rect width="960" height="1200" fill="url(#wf-sky)"/>
+  <!-- Sun -->
+  <circle cx="720" cy="280" r="120" fill="url(#wf-sun)"/>
+  <circle cx="720" cy="280" r="72" fill="#fff8f0" opacity="0.55"/>
+  <!-- Water body -->
+  <rect x="0" y="620" width="960" height="580" fill="url(#wf-water)"/>
+  <!-- Horizon glow -->
+  <rect x="0" y="560" width="960" height="120" fill="#c9e0e8" opacity="0.35" filter="url(#wf-soft)"/>
+  <!-- Abstract waves -->
+  <path d="M0 700 Q120 660 240 700 T480 700 T720 700 T960 700 L960 780 Q840 740 720 780 T480 780 T240 780 T0 780 Z" fill="#4a8fa0" opacity="0.35"/>
+  <path d="M0 760 Q160 720 320 760 T640 760 T960 760 L960 840 Q800 800 640 840 T320 840 T0 840 Z" fill="#3d7f90" opacity="0.4"/>
+  <path d="M0 820 Q100 800 200 820 T400 820 T600 820 T800 820 T960 820 L960 900 Q880 880 800 900 T640 900 T480 900 T320 900 T160 900 T0 900 Z" fill="#356d7d" opacity="0.45"/>
+  <!-- Terrace edge -->
+  <rect x="0" y="900" width="960" height="300" fill="url(#wf-water)" opacity="0.15"/>
+  <rect x="0" y="888" width="960" height="24" rx="2" fill="#e8d4c4" opacity="0.55"/>
+  <rect x="0" y="912" width="960" height="8" fill="#2d5a68" opacity="0.2"/>
+</svg>
