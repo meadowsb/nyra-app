@@ -9,6 +9,15 @@ const showNextDevIndicator = process.env.NYRA_NEXT_DEV_INDICATOR === "1";
 
 const nextConfig: NextConfig = {
   devIndicators: showNextDevIndicator ? { position: "bottom-left" } : false,
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

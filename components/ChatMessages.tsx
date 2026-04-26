@@ -5,6 +5,12 @@ import {
   usePrefersReducedMotion,
 } from "@/components/AssistantStreamedText";
 import { ThinkingBubble } from "@/components/ThinkingBubble";
+import {
+  venueAllowsMainCardRemoval,
+  venueIdsReadyToContact,
+  venueOutreachRowIsPostInquiry,
+  type OutreachItem,
+} from "@/components/SelectedVenuesSidebar";
 import type { Venue } from "@/components/VenueCard";
 import { VenueCard } from "@/components/VenueCard";
 import { VenueReportCtaPanel } from "@/components/VenueReportCtaPanel";
@@ -35,6 +41,7 @@ type ChatMessagesProps = {
   selectedVenueIds: string[];
   pulseVenueCards: boolean;
   onToggleVenue: (id: string) => void;
+  onRemoveVenueFromShortlist: (id: string) => void;
   venueSelectionHint: string | null;
   onVenueReportCta: () => void;
   /** When true, Send is primary; mobile Contact stays secondary until composer is empty. */
@@ -46,6 +53,12 @@ type ChatMessagesProps = {
   assistantRevealMessageId: string | null;
   /** When false, the latest assistant shortlist stays mounted off until streamed text finishes. */
   isTextComplete: boolean;
+  /** After “Contact venues”, rail / CTAs use pipeline state; main venue cards use only shortlisted vs inquiry-sent ids. */
+  outreachMode: boolean;
+  /** Live pipeline rows per shortlisted venue (`contacted` / `replied` lock the main card). */
+  outreachItems: OutreachItem[];
+  /** When set to a post-inquiry venue, hide the mobile thread “Contact” strip (rail footer handles context). */
+  plannerDetailVenueId?: string | null;
   onAssistantStreamStart?: () => void;
   onAssistantStreamProgress?: () => void;
   onAssistantStreamComplete?: () => void;
@@ -60,6 +73,7 @@ export function ChatMessages({
   selectedVenueIds,
   pulseVenueCards,
   onToggleVenue,
+  onRemoveVenueFromShortlist,
   venueSelectionHint,
   onVenueReportCta,
   composerHasText,
@@ -69,6 +83,9 @@ export function ChatMessages({
   thinkingExitMessageId,
   assistantRevealMessageId,
   isTextComplete,
+  outreachMode,
+  outreachItems,
+  plannerDetailVenueId = null,
   onAssistantStreamStart,
   onAssistantStreamProgress,
   onAssistantStreamComplete,
@@ -84,6 +101,33 @@ export function ChatMessages({
   const assistantToVenuesGap = "gap-3 sm:gap-4";
 
   const prefersReducedMotion = usePrefersReducedMotion();
+
+  const pendingAdditionalOutreachCount = useMemo(
+    () => venueIdsReadyToContact(outreachMode, selectedVenueIds, outreachItems).length,
+    [outreachMode, selectedVenueIds, outreachItems]
+  );
+
+  const outreachByVenueId = useMemo(() => {
+    const map = new Map<string, OutreachItem>();
+    for (const item of outreachItems) map.set(item.venueId, item);
+    return map;
+  }, [outreachItems]);
+
+  const inquirySentVenueIds = useMemo(
+    () =>
+      outreachItems
+        .filter(
+          (item) => item.status === "contacted" || item.status === "replied"
+        )
+        .map((item) => item.venueId),
+    [outreachItems]
+  );
+
+  const suppressMobileVenueReportCta = venueOutreachRowIsPostInquiry(
+    plannerDetailVenueId,
+    outreachMode,
+    outreachItems
+  );
 
   const turns = useMemo((): ChatTurn[] => {
     const out: ChatTurn[] = [];
@@ -163,12 +207,18 @@ export function ChatMessages({
             prefersReducedMotion ? "" : "nyra-results-pack"
           }`}
         >
-          <p className="text-left text-[11.5px] font-medium leading-snug tracking-[-0.01em] text-chat-text-secondary sm:text-[12px]">
-            These are the strongest matches based on your criteria:
+            <p className="text-left text-[11.5px] font-medium leading-snug tracking-[-0.01em] text-chat-text-secondary sm:text-[12px]">
+            These are the strongest matches based on your brief:
           </p>
           <div className="nyra-venues-grid grid items-start gap-1.5 sm:grid-cols-2 sm:gap-1.5 lg:grid-cols-3 lg:gap-1.5">
             {message.venues.map((venue, venueIndex) => {
-              const selected = selectedVenueIds.includes(venue.id);
+              const isSelected = selectedVenueIds.includes(venue.id);
+              const isInquirySent = inquirySentVenueIds.includes(venue.id);
+              const row = outreachByVenueId.get(venue.id);
+              const canRemoveFromCard = venueAllowsMainCardRemoval(
+                isSelected,
+                isInquirySent
+              );
 
               return (
                 <div
@@ -181,22 +231,39 @@ export function ChatMessages({
                 >
                   <VenueCard
                     venue={venue}
-                    selected={selected}
+                    selected={isSelected}
+                    inquirySent={isInquirySent}
+                    inquirySentLabel={
+                      row?.status === "replied" ? "Responded" : "Inquiry sent"
+                    }
                     pulse={pulseVenueCards}
                     onToggle={() => onToggleVenue(venue.id)}
+                    onRemoveFromShortlist={
+                      canRemoveFromCard
+                        ? () => onRemoveVenueFromShortlist(venue.id)
+                        : undefined
+                    }
                   />
                 </div>
               );
             })}
           </div>
-          {isLastInThread ? (
+          {isLastInThread && !suppressMobileVenueReportCta ? (
             <div className="pt-3 lg:hidden">
               <VenueReportCtaPanel
                 selectedCount={selectedVenueIds.length}
                 venueSelectionHint={venueSelectionHint}
                 onVenueReportCta={onVenueReportCta}
+                outreachActive={outreachMode}
+                pendingAdditionalOutreachCount={pendingAdditionalOutreachCount}
                 ctaProminence={
-                  !composerHasText && selectedVenueIds.length > 0 ? "primary" : "secondary"
+                  pendingAdditionalOutreachCount > 0
+                    ? "primary"
+                    : outreachMode ||
+                        composerHasText ||
+                        selectedVenueIds.length === 0
+                      ? "secondary"
+                      : "primary"
                 }
               />
             </div>

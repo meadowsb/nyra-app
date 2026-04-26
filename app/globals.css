@@ -202,6 +202,12 @@ body {
 
 .nyra-chat-shell .nyra-btn-primary {
   box-shadow: none;
+  transition:
+    background-color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.25s ease,
+    box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.15s ease;
 }
 
 .nyra-btn-primary:hover:not(:disabled) {
@@ -271,6 +277,12 @@ body {
   color: rgba(255, 255, 255, 0.7);
   box-shadow: none;
   letter-spacing: -0.015em;
+  transition:
+    background-color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.15s ease;
 }
 
 .nyra-btn-chat-secondary:hover:not(:disabled) {
@@ -398,6 +410,12 @@ body {
   background-color: rgba(255, 255, 255, 0.055);
 }
 
+/** Outreach reference cards: keep shortlisted surface, without “hover to curate” affordance. */
+.nyra-chat-shell .nyra-venue-card--outreach-readonly.nyra-venue-card--selected-surface:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
 /** Shortlist row — same visual language as chat secondary actions (not primary). */
 .nyra-chat-shell .nyra-shortlist-toggle {
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -423,4 +441,1235 @@ body {
   border-color: rgba(255, 255, 255, 0.14);
   background-color: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.7);
+}
+
+/** Main venue card: one-shot soft halo when added to shortlist (see VenueCard). */
+@keyframes nyraVenueShortlistGlow {
+  0% {
+    opacity: 0;
+    box-shadow:
+      inset 0 0 0 0 transparent,
+      0 0 0 0 transparent;
+  }
+
+  38% {
+    opacity: 0.55;
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--nyra-accent) 14%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--nyra-accent) 12%, transparent),
+      0 0 36px -14px color-mix(in srgb, var(--nyra-accent) 14%, transparent);
+  }
+
+  100% {
+    opacity: 0;
+    box-shadow:
+      inset 0 0 0 0 transparent,
+      0 0 0 0 transparent;
+  }
+}
+
+.nyra-venue-card__shortlist-glow-layer {
+  animation: nyraVenueShortlistGlow 1050ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nyra-venue-card__shortlist-glow-layer {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* —— Landing: hero-scoped atmosphere + motion (dark shell only) —— */
+
+/** Landing hero: drifting “cloud” motion (transform + opacity only). */
+@keyframes nyraCloudFloat1 {
+  0% {
+    transform: translate3d(-36%, -34%, 0) scale(0.75);
+    opacity: 0.2;
+  }
+  17% {
+    transform: translate3d(-6%, -6%, 0) scale(1.05);
+    opacity: 0.38;
+  }
+  50% {
+    transform: translate3d(34%, 30%, 0) scale(1.4);
+    opacity: 0.52;
+  }
+  83% {
+    transform: translate3d(10%, -22%, 0) scale(0.95);
+    opacity: 0.28;
+  }
+  100% {
+    transform: translate3d(-28%, -18%, 0) scale(0.82);
+    opacity: 0.22;
+  }
+}
+
+@keyframes nyraCloudFloat2 {
+  0% {
+    transform: translate3d(32%, 26%, 0) scale(0.78);
+    opacity: 0.22;
+  }
+  17% {
+    transform: translate3d(8%, 4%, 0) scale(1.08);
+    opacity: 0.36;
+  }
+  50% {
+    transform: translate3d(-34%, -28%, 0) scale(1.38);
+    opacity: 0.55;
+  }
+  83% {
+    transform: translate3d(-12%, 18%, 0) scale(0.92);
+    opacity: 0.32;
+  }
+  100% {
+    transform: translate3d(26%, 22%, 0) scale(0.8);
+    opacity: 0.18;
+  }
+}
+
+@keyframes nyraCloudFloat3 {
+  0% {
+    transform: translate3d(-30%, 32%, 0) scale(0.76);
+    opacity: 0.18;
+  }
+  17% {
+    transform: translate3d(-4%, 8%, 0) scale(1.02);
+    opacity: 0.34;
+  }
+  50% {
+    transform: translate3d(38%, -26%, 0) scale(1.4);
+    opacity: 0.5;
+  }
+  83% {
+    transform: translate3d(14%, -10%, 0) scale(1.06);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate3d(-22%, 28%, 0) scale(0.88);
+    opacity: 0.24;
+  }
+}
+
+@keyframes nyraCloudWashFloatRose {
+  0% {
+    transform: translate3d(-32%, 8%, 0) scale(0.88);
+    opacity: 0.32;
+  }
+  50% {
+    transform: translate3d(28%, -18%, 0) scale(1.22);
+    opacity: 0.52;
+  }
+  100% {
+    transform: translate3d(36%, -22%, 0) scale(0.94);
+    opacity: 0.38;
+  }
+}
+
+@keyframes nyraCloudWashFloatViolet {
+  0% {
+    transform: translate3d(30%, -12%, 0) scale(0.95);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate3d(-28%, 22%, 0) scale(1.18);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate3d(-36%, 26%, 0) scale(0.92);
+    opacity: 0.36;
+  }
+}
+
+@keyframes nyraCloudWashFloatChampagne {
+  0% {
+    transform: translate3d(-18%, 24%, 0) scale(0.86);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translate3d(26%, -26%, 0) scale(1.2);
+    opacity: 0.48;
+  }
+  100% {
+    transform: translate3d(32%, -32%, 0) scale(0.9);
+    opacity: 0.34;
+  }
+}
+
+@keyframes nyraCloudWashFloatAccent {
+  0% {
+    transform: translate3d(-34%, -16%, 0) scale(0.9);
+    opacity: 0.28;
+  }
+  50% {
+    transform: translate3d(26%, 20%, 0) scale(1.16);
+    opacity: 0.46;
+  }
+  100% {
+    transform: translate3d(34%, 12%, 0) scale(0.94);
+    opacity: 0.32;
+  }
+}
+
+/** Full-hero semi-transparent gradient wash (slow diagonal drift). */
+@keyframes nyraHeroAtmosphereSheen {
+  0% {
+    transform: translate3d(-22%, -8%, 0) rotate(11deg) scale(1.04);
+    opacity: 0.44;
+  }
+  50% {
+    transform: translate3d(22%, 10%, 0) rotate(11deg) scale(1.1);
+    opacity: 0.52;
+  }
+  100% {
+    transform: translate3d(-22%, -8%, 0) rotate(11deg) scale(1.04);
+    opacity: 0.44;
+  }
+}
+
+@keyframes nyraHeroReveal {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes nyraHeroRevealWordmark {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 0.95;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes nyraHeroAtmosphereIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nyraComposerGlow {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate3d(2%, -1%, 0) scale(1.04);
+  }
+}
+
+@keyframes nyraHeroQueryCaretBlink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.2;
+  }
+}
+
+.nyra-hero-query-caret {
+  display: inline-block;
+  width: 1px;
+  height: 1.05em;
+  margin-left: 1px;
+  flex-shrink: 0;
+  align-self: center;
+  background-color: currentColor;
+  animation: nyraHeroQueryCaretBlink 0.9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nyra-hero-query-caret {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+.nyra-landing-root {
+  position: relative;
+}
+
+.nyra-landing-main {
+  position: relative;
+  z-index: 1;
+}
+
+/* —— Landing: glass surfaces + section motion (below hero) —— */
+
+/** Layered glass — header intro tiles (lighter, softer blur). */
+.nyra-landing-root .nyra-landing-glass-header {
+  background: rgba(20, 20, 25, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.45s ease-out,
+    box-shadow 0.45s ease-out;
+}
+
+.nyra-landing-root .nyra-landing-glass-header:hover {
+  transform: translateY(-4px);
+  background: rgba(30, 30, 36, 0.62);
+  box-shadow:
+    0 14px 44px rgba(0, 0, 0, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.075);
+}
+
+/** Layered glass — content cards (stronger tint + deeper blur). */
+.nyra-landing-root .nyra-landing-glass-content {
+  background: rgba(20, 20, 25, 0.7);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.45s ease-out,
+    box-shadow 0.45s ease-out;
+}
+
+.nyra-landing-root .nyra-landing-glass-content:hover {
+  transform: translateY(-4px);
+  background: rgba(30, 30, 36, 0.78);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+/** Landing — How it works: centered stack (icon → title → desc), identical rhythm on every card. */
+.nyra-landing-root .nyra-how-step-card {
+  padding: 26px 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .nyra-landing-root .nyra-how-step-card {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+.nyra-how-step-card__stack {
+  width: 100%;
+  align-self: stretch;
+  text-align: center;
+}
+
+.nyra-how-step-card__group {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  flex-direction: column;
+  flex-shrink: 0;
+  flex-grow: 0;
+  align-items: center;
+  text-align: center;
+}
+
+.nyra-how-step-card__icon-slot {
+  display: flex;
+  flex-shrink: 0;
+  flex-grow: 0;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.nyra-how-step-card__icon-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.25rem;
+  height: 4.25rem;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(20, 20, 25, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.3),
+    0 0 36px rgb(var(--nyra-how-glow-rgb) / 0.22);
+  color: var(--nyra-how-icon-fg);
+  transition:
+    transform 0.25s ease-out,
+    box-shadow 0.25s ease-out,
+    color 0.25s ease-out;
+}
+
+.nyra-how-step-card[data-step="1"] .nyra-how-step-card__icon-shell {
+  --nyra-how-icon-fg: #a396c4;
+  --nyra-how-glow-rgb: 124 106 168;
+}
+
+.nyra-how-step-card[data-step="2"] .nyra-how-step-card__icon-shell {
+  --nyra-how-icon-fg: #c4b0e8;
+  --nyra-how-glow-rgb: 154 126 206;
+}
+
+.nyra-how-step-card[data-step="3"] .nyra-how-step-card__icon-shell {
+  --nyra-how-icon-fg: #e8b8ca;
+  --nyra-how-glow-rgb: 200 132 155;
+}
+
+.nyra-how-step-card:hover .nyra-how-step-card__icon-shell {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.34),
+    0 0 44px rgb(var(--nyra-how-glow-rgb) / 0.34);
+}
+
+.nyra-how-step-card__badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transform: translate(30%, -30%);
+  transition: transform 0.25s ease-out;
+}
+
+.nyra-how-step-card[data-step="1"] .nyra-how-step-card__badge {
+  background: #7d6ba3;
+}
+
+.nyra-how-step-card[data-step="2"] .nyra-how-step-card__badge {
+  background: #9578c9;
+}
+
+.nyra-how-step-card[data-step="3"] .nyra-how-step-card__badge {
+  background: var(--nyra-accent);
+  color: var(--nyra-accent-foreground);
+}
+
+.nyra-how-step-card:hover .nyra-how-step-card__badge {
+  transform: translate(30%, -30%) scale(1.05);
+}
+
+.nyra-how-step-card__title {
+  margin: 0;
+  margin-top: 14px;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: var(--chat-text-primary);
+}
+
+.nyra-how-step-card__title-inner {
+  max-width: 15rem;
+  text-align: center;
+}
+
+.nyra-how-step-card__desc {
+  margin: 0;
+  margin-top: 8px;
+  max-width: 15rem;
+  flex-shrink: 0;
+  padding: 0;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--chat-text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nyra-how-step-card__icon-shell,
+  .nyra-how-step-card__badge {
+    transition: none;
+  }
+
+  .nyra-how-step-card:hover .nyra-how-step-card__icon-shell {
+    transform: none;
+  }
+
+  .nyra-how-step-card:hover .nyra-how-step-card__badge {
+    transform: translate(30%, -30%);
+  }
+}
+
+/** Standard section copy rhythm (eyebrow + headline + sub). */
+.nyra-landing-section-headline {
+  margin-top: 1rem;
+  max-width: 42rem;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--chat-text-primary);
+}
+
+@media (min-width: 640px) {
+  .nyra-landing-section-headline {
+    font-size: 1.375rem;
+    line-height: 1.2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .nyra-landing-section-headline {
+    font-size: 1.5rem;
+  }
+}
+
+.nyra-landing-section-sub {
+  margin-top: 1rem;
+  font-size: 15px;
+  line-height: 1.625;
+  color: var(--chat-text-secondary);
+}
+
+.nyra-landing-section-head-card {
+  padding: 2rem 1.5rem;
+  border-radius: 1rem;
+}
+
+@media (min-width: 640px) {
+  .nyra-landing-section-head-card {
+    padding: 2.25rem 2.25rem;
+  }
+}
+
+/**
+ * Landing sections: vertical gap from section header card to the content block
+ * (step grid, product preview track, testimonials). Matches Tailwind `sm` (640px).
+ */
+.nyra-landing-section-head-to-content {
+  margin-top: 32px;
+}
+
+@media (min-width: 640px) {
+  .nyra-landing-section-head-to-content {
+    margin-top: 48px;
+  }
+}
+
+/** Scroll-reveal: hidden only after hydration when not yet active. */
+.nyra-landing-reveal--hydrated:not(.nyra-landing-reveal--active) .nyra-landing-reveal-head,
+.nyra-landing-reveal--hydrated:not(.nyra-landing-reveal--active) .nyra-landing-reveal-card {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.nyra-landing-reveal--active .nyra-landing-reveal-head {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.52s ease-out,
+    transform 0.52s ease-out;
+}
+
+.nyra-landing-reveal--active .nyra-landing-reveal-card {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.5s ease-out,
+    transform 0.5s ease-out;
+}
+
+.nyra-landing-reveal--active .nyra-landing-reveal-stagger > li:nth-child(2) .nyra-landing-reveal-card {
+  transition-delay: 80ms;
+}
+
+.nyra-landing-reveal--active .nyra-landing-reveal-stagger > li:nth-child(3) .nyra-landing-reveal-card {
+  transition-delay: 160ms;
+}
+
+/** Example: headline first, preview follows slightly after. */
+.nyra-landing-reveal--active .nyra-landing-reveal-card.nyra-landing-reveal-sequence-tail {
+  transition-delay: 100ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nyra-landing-reveal--hydrated:not(.nyra-landing-reveal--active) .nyra-landing-reveal-head,
+  .nyra-landing-reveal--hydrated:not(.nyra-landing-reveal--active) .nyra-landing-reveal-card {
+    opacity: 1;
+    transform: none;
+  }
+
+  .nyra-landing-reveal--active .nyra-landing-reveal-head,
+  .nyra-landing-reveal--active .nyra-landing-reveal-card {
+    transition: none;
+  }
+
+  .nyra-landing-root .nyra-landing-glass-header:hover,
+  .nyra-landing-root .nyra-landing-glass-content:hover {
+    transform: none;
+  }
+}
+
+/** Hero section: deep base + colorful layers (does not style How it works / testimonials). */
+.nyra-landing-hero-section {
+  background-color: var(--chat-canvas);
+  min-height: min(82vh, 52rem);
+  min-height: min(82svh, 52rem);
+}
+
+@media (min-width: 1024px) {
+  .nyra-landing-hero-section {
+    min-height: min(88vh, 58rem);
+    min-height: min(88svh, 58rem);
+  }
+}
+
+.nyra-landing-hero-base {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(165deg, #070608 0%, #0c0a10 32%, #090812 68%, #060508 100%),
+    radial-gradient(ellipse 120% 80% at 50% 100%, rgba(10, 8, 16, 0.98) 0%, transparent 58%);
+}
+
+/** Hero-only atmosphere: orbs + wash, fades in first; color stays above fold. */
+.nyra-landing-hero-atmosphere {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  opacity: 0;
+  animation: nyraHeroAtmosphereIn 0.95s ease-out forwards;
+  mask-image: linear-gradient(
+    to bottom,
+    black 0%,
+    black min(86%, 36rem),
+    rgba(0, 0, 0, 0.55) 94%,
+    transparent 100%
+  );
+}
+
+/** Subtle edge vignette: centers the glow without affecting hero layout. */
+.nyra-landing-hero-atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 92% 85% at 50% 42%, transparent 0%, transparent 48%, rgba(4, 3, 8, 0.38) 100%),
+    radial-gradient(ellipse 130% 100% at 50% 50%, transparent 62%, rgba(6, 5, 10, 0.72) 100%);
+}
+
+.nyra-landing-hero-atmosphere__washes {
+  position: absolute;
+  inset: -28% -18% -8%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/** Each wash layer is its own element + animation (not a single stacked background). */
+.nyra-landing-hero-wash-blob {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform, opacity;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  filter: blur(160px);
+}
+
+.nyra-landing-hero-wash-blob--rose {
+  width: min(110vw, 1120px);
+  height: min(110vw, 1120px);
+  left: -12%;
+  top: -26%;
+  background: radial-gradient(
+    closest-side,
+    rgba(190, 120, 150, 0.58) 0%,
+    rgba(165, 95, 128, 0.34) 32%,
+    rgba(120, 72, 98, 0.14) 52%,
+    transparent 68%
+  );
+  animation-name: nyraCloudWashFloatRose;
+  animation-duration: 16s;
+  animation-delay: -2s;
+}
+
+.nyra-landing-hero-wash-blob--violet {
+  width: min(108vw, 1080px);
+  height: min(108vw, 1080px);
+  right: -16%;
+  top: -8%;
+  filter: blur(180px);
+  background: radial-gradient(
+    closest-side,
+    rgba(110, 90, 190, 0.48) 0%,
+    rgba(88, 72, 158, 0.28) 34%,
+    rgba(52, 44, 108, 0.12) 54%,
+    transparent 70%
+  );
+  animation-name: nyraCloudWashFloatViolet;
+  animation-duration: 18s;
+  animation-delay: -5.5s;
+}
+
+.nyra-landing-hero-wash-blob--champagne {
+  width: min(115vw, 1200px);
+  height: min(95vw, 1000px);
+  left: 18%;
+  bottom: -42%;
+  border-radius: 52%;
+  filter: blur(200px);
+  background: radial-gradient(
+    closest-side,
+    rgba(210, 160, 120, 0.34) 0%,
+    rgba(185, 138, 108, 0.22) 36%,
+    rgba(120, 88, 72, 0.1) 56%,
+    transparent 72%
+  );
+  animation-name: nyraCloudWashFloatChampagne;
+  animation-duration: 20s;
+  animation-delay: -3.2s;
+}
+
+.nyra-landing-hero-wash-blob--accent {
+  width: min(100vw, 960px);
+  height: min(85vw, 880px);
+  left: 22%;
+  top: -34%;
+  filter: blur(150px);
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--nyra-accent) 48%, transparent) 0%,
+    color-mix(in srgb, var(--nyra-accent) 22%, transparent) 40%,
+    color-mix(in srgb, var(--nyra-accent) 8%, transparent) 58%,
+    transparent 72%
+  );
+  animation-name: nyraCloudWashFloatAccent;
+  animation-duration: 14s;
+  animation-delay: -1.4s;
+}
+
+/** Slow diagonal gradient wash across the full hero (ties motion together). */
+.nyra-landing-hero-atmosphere__sheen {
+  position: absolute;
+  inset: -12% -42%;
+  pointer-events: none;
+  z-index: 2;
+  mix-blend-mode: soft-light;
+  opacity: 0.42;
+  background: linear-gradient(
+    108deg,
+    transparent 0%,
+    rgba(22, 18, 30, 0.42) 18%,
+    rgba(36, 28, 48, 0.32) 38%,
+    rgba(28, 24, 42, 0.36) 52%,
+    rgba(38, 30, 52, 0.3) 72%,
+    rgba(20, 17, 28, 0.4) 86%,
+    transparent 100%
+  );
+  will-change: transform, opacity;
+  animation: nyraHeroAtmosphereSheen 12s ease-in-out infinite alternate;
+}
+
+/** Static depth veil (no animation); keeps the hero readable. */
+.nyra-landing-hero-atmosphere__wash-veil {
+  position: absolute;
+  inset: -28% -18% -8%;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(18, 14, 22, 0.42) 0%,
+    rgba(12, 10, 16, 0.12) 38%,
+    transparent 58%
+  );
+  opacity: 1;
+}
+
+/** Large blurred blooms: screen blend reads as light on the dark hero base. */
+.nyra-landing-hero-atmosphere__blooms {
+  position: absolute;
+  inset: -12% -8% -18%;
+  z-index: 1;
+  mix-blend-mode: screen;
+  opacity: 1;
+}
+
+.nyra-landing-hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform, opacity;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+.nyra-landing-hero-orb--rose {
+  width: min(105vw, 1180px);
+  height: min(105vw, 1180px);
+  left: -22%;
+  top: -34%;
+  filter: blur(160px);
+  background: radial-gradient(
+    closest-side,
+    rgba(190, 120, 150, 0.62) 0%,
+    rgba(165, 98, 128, 0.38) 36%,
+    rgba(110, 68, 92, 0.16) 56%,
+    transparent 72%
+  );
+  animation-name: nyraCloudFloat1;
+  animation-duration: 6s;
+  animation-delay: -1.2s;
+}
+
+.nyra-landing-hero-orb--violet {
+  width: min(102vw, 1120px);
+  height: min(102vw, 1120px);
+  right: -24%;
+  top: 0%;
+  filter: blur(180px);
+  background: radial-gradient(
+    closest-side,
+    rgba(110, 90, 190, 0.52) 0%,
+    rgba(88, 74, 158, 0.32) 38%,
+    rgba(52, 46, 108, 0.14) 58%,
+    transparent 74%
+  );
+  animation-name: nyraCloudFloat2;
+  animation-duration: 8s;
+  animation-delay: -4.5s;
+}
+
+.nyra-landing-hero-orb--champagne {
+  width: min(98vw, 1050px);
+  height: min(98vw, 1050px);
+  left: 4%;
+  bottom: -40%;
+  filter: blur(200px);
+  background: radial-gradient(
+    closest-side,
+    rgba(210, 160, 120, 0.38) 0%,
+    rgba(188, 142, 112, 0.26) 34%,
+    rgba(120, 92, 76, 0.14) 56%,
+    transparent 76%
+  );
+  animation-name: nyraCloudFloat3;
+  animation-duration: 10s;
+  animation-delay: -2.8s;
+}
+
+.nyra-landing-hero-fade-up {
+  opacity: 0;
+  animation: nyraHeroReveal 0.78s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/** Stagger: atmosphere first, then copy, composer, example preview last. */
+.nyra-landing-hero-fade-up--delay-1 {
+  animation-delay: 0.38s;
+}
+
+.nyra-landing-hero-fade-up--delay-2 {
+  animation-delay: 0.48s;
+}
+
+.nyra-landing-hero-fade-up--delay-3 {
+  animation-delay: 0.58s;
+}
+
+.nyra-landing-hero-fade-up--delay-4 {
+  animation-delay: 0.74s;
+}
+
+.nyra-landing-hero-fade-up--delay-5 {
+  animation-delay: 0.96s;
+}
+
+/**
+ * Hero wordmark — soft rose→violet gradient tied to the atmosphere; readable on dark canvas without loud accent.
+ */
+.nyra-landing-hero-section .nyra-landing-hero-wordmark.nyra-eyebrow {
+  letter-spacing: 0.2em;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--nyra-accent) 80%, transparent) 0%,
+    rgb(253 164 175 / 0.52) 48%,
+    rgb(196 181 253 / 0.52) 100%
+  );
+  background-size: 120% 100%;
+  background-position: 10% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 12px rgb(244 114 182 / 0.14)) drop-shadow(0 0 18px rgb(167 139 250 / 0.1));
+}
+
+.nyra-landing-hero-section .nyra-landing-hero-wordmark.nyra-landing-hero-fade-up {
+  animation-name: nyraHeroRevealWordmark;
+}
+
+/** Landing hero composer: soft “light source” + lift on hover/focus. */
+.nyra-landing-composer-host {
+  position: relative;
+  isolation: isolate;
+  border-radius: 1.75rem;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nyra-landing-composer-host::before {
+  content: "";
+  position: absolute;
+  inset: -22px -18px -14px;
+  border-radius: 2rem;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      75% 95% at 50% 115%,
+      color-mix(in srgb, var(--nyra-accent) 55%, transparent) 0%,
+      rgba(130, 88, 175, 0.35) 42%,
+      transparent 62%
+    ),
+    radial-gradient(
+      55% 70% at 12% 30%,
+      rgba(200, 130, 160, 0.28) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      50% 65% at 92% 25%,
+      rgba(140, 110, 200, 0.26) 0%,
+      transparent 52%
+    );
+  opacity: 0.88;
+  filter: blur(28px);
+  animation: nyraComposerGlow 16s ease-in-out infinite alternate;
+}
+
+/** Gradient ring: “active energy” frame around the composer (landing hero only). */
+.nyra-chat-shell .nyra-landing-composer-ring {
+  position: relative;
+  z-index: 1;
+  border-radius: 1.75rem;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(210, 145, 168, 0.92) 0%,
+    rgba(165, 118, 155, 0.88) 34%,
+    rgba(130, 95, 175, 0.85) 68%,
+    rgba(175, 140, 195, 0.78) 100%
+  );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 0 48px -8px color-mix(in srgb, var(--nyra-accent) 38%, transparent),
+    0 0 80px -12px rgba(120, 85, 165, 0.45),
+    0 22px 56px -24px rgba(0, 0, 0, 0.65);
+  transition: box-shadow 0.4s ease;
+}
+
+.nyra-chat-shell .nyra-landing-composer-host:hover .nyra-landing-composer-ring,
+.nyra-chat-shell .nyra-landing-composer-host:focus-within .nyra-landing-composer-ring {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+    0 0 56px -6px color-mix(in srgb, var(--nyra-accent) 48%, transparent),
+    0 0 96px -10px rgba(130, 92, 185, 0.55),
+    0 24px 60px -22px rgba(0, 0, 0, 0.55);
+}
+
+.nyra-chat-shell .nyra-landing-composer {
+  position: relative;
+  z-index: 1;
+  border-color: transparent;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 1px 0 rgba(255, 255, 255, 0.07) inset,
+    0 14px 40px -18px rgba(0, 0, 0, 0.55);
+  transition:
+    background-color 0.35s ease,
+    box-shadow 0.35s ease,
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nyra-chat-shell .nyra-landing-composer:hover,
+.nyra-chat-shell .nyra-landing-composer:focus-within {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 1px 0 rgba(255, 255, 255, 0.09) inset,
+    0 18px 48px -18px rgba(0, 0, 0, 0.5);
+}
+
+.nyra-chat-shell .nyra-landing-composer:focus-within {
+  background-color: #363636;
+}
+
+.nyra-landing-hero-send {
+  background-image: linear-gradient(
+    148deg,
+    #c995a8 0%,
+    #a87892 28%,
+    #8f6a8a 58%,
+    #7a62a0 100%
+  );
+  color: #ffffff;
+  border: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(40, 28, 48, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 4px 16px -4px rgba(160, 110, 150, 0.55),
+    0 10px 32px -8px rgba(95, 70, 140, 0.42),
+    0 2px 8px -2px rgba(0, 0, 0, 0.4);
+  transition:
+    filter 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nyra-landing-hero-send:hover:not(:disabled) {
+  filter: brightness(1.07) saturate(1.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -1px 0 rgba(40, 28, 48, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 6px 22px -4px rgba(175, 125, 165, 0.62),
+    0 14px 40px -6px rgba(105, 78, 155, 0.5),
+    0 3px 10px -3px rgba(0, 0, 0, 0.35);
+  transform: translateY(-1px);
+}
+
+.nyra-landing-hero-send:active:not(:disabled) {
+  filter: brightness(1.02);
+  transform: translateY(0) scale(0.94);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 3px 14px -6px rgba(150, 100, 140, 0.45),
+    0 1px 5px -2px rgba(0, 0, 0, 0.45);
+}
+
+.nyra-landing-hero-send:focus-visible {
+  outline: 2px solid var(--nyra-accent-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nyra-landing-hero-atmosphere {
+    animation: none;
+    opacity: 1;
+    mask-image: none;
+  }
+
+  .nyra-landing-hero-wash-blob {
+    animation: none;
+    transform: none;
+  }
+
+  .nyra-landing-hero-wash-blob--rose {
+    opacity: 0.78;
+  }
+
+  .nyra-landing-hero-wash-blob--violet {
+    opacity: 0.76;
+  }
+
+  .nyra-landing-hero-wash-blob--champagne {
+    opacity: 0.72;
+  }
+
+  .nyra-landing-hero-wash-blob--accent {
+    opacity: 0.66;
+  }
+
+  .nyra-landing-hero-atmosphere__sheen {
+    animation: none;
+    transform: none;
+    opacity: 0.42;
+  }
+
+  .nyra-landing-hero-orb {
+    animation: none;
+    transform: none;
+  }
+
+  .nyra-landing-hero-orb--rose {
+    opacity: 0.4;
+  }
+
+  .nyra-landing-hero-orb--violet {
+    opacity: 0.38;
+  }
+
+  .nyra-landing-hero-orb--champagne {
+    opacity: 0.36;
+  }
+
+  .nyra-landing-composer-host::before {
+    animation: none;
+    opacity: 0.82;
+    transform: none;
+  }
+
+  .nyra-landing-hero-fade-up {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .nyra-landing-hero-section .nyra-landing-hero-wordmark.nyra-landing-hero-fade-up {
+    opacity: 0.95;
+  }
+
+  .nyra-chat-shell .nyra-landing-composer-host {
+    transform: none !important;
+  }
+
+  .nyra-landing-hero-send:hover:not(:disabled),
+  .nyra-landing-hero-send:active:not(:disabled) {
+    transform: none;
+    filter: none;
+  }
+
+  .nyra-chat-shell .nyra-rail-tile--inprogress-motion {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .nyra-chat-shell .nyra-rail-tile--shortlist-arrive {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nyra-landing-composer-host:hover,
+  .nyra-landing-composer-host:focus-within {
+    transform: translate3d(0, -1px, 0);
+  }
+}
+
+/**
+ * Shortlist right rail: when a venue leaves “Ready to contact” for “In progress”,
+ * a brief enter + soft accent/emerald glow (duration aligned with ShortlistRailCollapsed).
+ */
+@keyframes nyra-rail-inprogress-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes nyra-rail-inprogress-glow {
+  0% {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+      0 0 0 0 transparent,
+      0 0 0 0 transparent;
+  }
+
+  42% {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+      0 0 0 1px color-mix(in srgb, var(--nyra-accent) 22%, transparent),
+      0 0 26px -12px color-mix(in srgb, rgb(52 211 153) 16%, transparent);
+  }
+
+  100% {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+      0 0 0 0 transparent,
+      0 0 0 0 transparent;
+  }
+}
+
+.nyra-chat-shell .nyra-rail-tile--inprogress-motion {
+  --nyra-rail-stagger: 0ms;
+  animation:
+    nyra-rail-inprogress-enter 270ms cubic-bezier(0.22, 1, 0.36, 1) var(--nyra-rail-stagger) both,
+    nyra-rail-inprogress-glow 1050ms cubic-bezier(0.22, 1, 0.36, 1) var(--nyra-rail-stagger) both;
+}
+
+/**
+ * Shortlist right rail: new “Ready to contact” row — calm enter + soft accent (~1s).
+ */
+@keyframes nyra-rail-shortlist-arrive-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes nyra-rail-shortlist-arrive-accent {
+  0% {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+      0 0 0 0 transparent,
+      0 0 0 0 transparent;
+  }
+
+  40% {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.045),
+      0 0 0 1px color-mix(in srgb, var(--nyra-accent) 18%, transparent),
+      0 0 32px -14px color-mix(in srgb, var(--nyra-accent) 12%, transparent);
+  }
+
+  100% {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+      0 0 0 0 transparent,
+      0 0 0 0 transparent;
+  }
+}
+
+.nyra-chat-shell .nyra-rail-tile--shortlist-arrive {
+  border-radius: 0.5rem;
+  animation:
+    nyra-rail-shortlist-arrive-enter 270ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    nyra-rail-shortlist-arrive-accent 1050ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }

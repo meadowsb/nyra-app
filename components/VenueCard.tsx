@@ -1,7 +1,9 @@
 "use client";
 
-/** Placeholder hero art lane — maps to distinct abstract visuals in `/public/venues/`. */
-export type VenueHeroPreset = "modern-city" | "waterfront" | "loft-industrial";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+
+import { usePrefersReducedMotion } from "@/components/AssistantStreamedText";
 
 export type Venue = {
   id: string;
@@ -14,46 +16,8 @@ export type Venue = {
   vibe: string;
   capacity: string;
   whyFit: string;
-  /** When set, selects hero placeholder; otherwise inferred from tag/vibe/name/location. */
-  heroPreset?: VenueHeroPreset;
+  heroImage: string;
 };
-
-function hashId(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return h;
-}
-
-function resolveVenueHeroPreset(venue: Venue): VenueHeroPreset {
-  if (venue.heroPreset) return venue.heroPreset;
-  const text = `${venue.tag} ${venue.vibe} ${venue.name} ${venue.location}`.toLowerCase();
-  if (
-    /waterfront|ocean|beach|bay|harbor|harbour|shore|coastal|terrace|salt air|marine|riverside|lakefront/.test(
-      text,
-    )
-  ) {
-    return "waterfront";
-  }
-  if (
-    /loft|industrial|warehouse|exposed brick|\bconcrete|beams?\b|factory|raw space|distillery/.test(text)
-  ) {
-    return "loft-industrial";
-  }
-  if (/modern|glass|skyline|tower|city views|urban|penthouse|high-?rise|downtown/.test(text)) {
-    return "modern-city";
-  }
-  const order: VenueHeroPreset[] = ["modern-city", "waterfront", "loft-industrial"];
-  return order[hashId(venue.id) % 3]!;
-}
-
-function venueHeroSrc(venue: Venue): string {
-  const paths: Record<VenueHeroPreset, string> = {
-    "modern-city": "/venues/hero-modern-city.svg",
-    waterfront: "/venues/hero-waterfront.svg",
-    "loft-industrial": "/venues/hero-loft-industrial.svg",
-  };
-  return paths[resolveVenueHeroPreset(venue)];
-}
 
 function CheckStrokeIcon({ className }: { className?: string }) {
   return (
@@ -114,48 +78,104 @@ function MetaCell({ label, value }: { label: string; value: string }) {
 type VenueCardProps = {
   venue: Venue;
   selected: boolean;
+  /** True only when this venue’s outreach row is `contacted` or `replied` (main card ignores queue). */
+  inquirySent?: boolean;
+  /** Shown in the read-only footer when `inquirySent` (default “Inquiry sent”). */
+  inquirySentLabel?: string;
   pulse: boolean;
   onToggle: () => void;
+  /** When set, shows a subtle “Remove” overlay in the footer; shortlisted button stays full-width. */
+  onRemoveFromShortlist?: () => void;
 };
 
 /** Calm easing aligned with venue selection micro-motion in chat styles. */
 const easePremium = "ease-[cubic-bezier(0.22,1,0.36,1)]";
 
-export function VenueCard({ venue, selected, pulse, onToggle }: VenueCardProps) {
-  const heroSrc = venueHeroSrc(venue);
+export function VenueCard({
+  venue,
+  selected,
+  inquirySent = false,
+  inquirySentLabel = "Inquiry sent",
+  pulse,
+  onToggle,
+  onRemoveFromShortlist,
+}: VenueCardProps) {
+  const heroSrc = venue.heroImage;
+  const reduceMotion = usePrefersReducedMotion();
+  const prevSelectedRef = useRef<boolean | null>(null);
+  const [shortlistAddGlow, setShortlistAddGlow] = useState(false);
+  const [checkArrival, setCheckArrival] = useState(false);
+
+  useEffect(() => {
+    if (reduceMotion || inquirySent) {
+      prevSelectedRef.current = selected;
+      return;
+    }
+    if (prevSelectedRef.current === null) {
+      prevSelectedRef.current = selected;
+      return;
+    }
+    const prev = prevSelectedRef.current;
+    prevSelectedRef.current = selected;
+    if (prev === false && selected === true) {
+      setShortlistAddGlow(true);
+      setCheckArrival(true);
+      const glowClear = window.setTimeout(() => setShortlistAddGlow(false), 1080);
+      const checkClear = window.setTimeout(() => setCheckArrival(false), 300);
+      return () => {
+        window.clearTimeout(glowClear);
+        window.clearTimeout(checkClear);
+      };
+    }
+  }, [selected, inquirySent, reduceMotion]);
+
+  /** Main-thread cards: chrome follows shortlist or recorded inquiry only. */
+  const showSelectedChrome = selected || inquirySent;
+  const showSelectedCheck = selected && !inquirySent;
+  const lockedFooterText = inquirySent ? inquirySentLabel : "";
 
   const rationaleTitle = `${venue.vibe}\n\n${venue.whyFit}`;
 
   return (
     <div
       className={`group relative flex flex-col overflow-hidden rounded-xl border transition-[border-color,background-color,box-shadow] duration-500 ${easePremium} motion-reduce:duration-200 ${
-        selected
-          ? "nyra-venue-card--selected nyra-venue-card--selected-surface nyra-surface-soft border ring-0 motion-reduce:hover:shadow-none"
+        showSelectedChrome
+          ? `nyra-venue-card--selected nyra-venue-card--selected-surface nyra-surface-soft border ring-0 motion-reduce:hover:shadow-none${
+              inquirySent ? " nyra-venue-card--outreach-readonly" : ""
+            }`
           : `nyra-surface-soft border-chat-border bg-chat-raised ring-0 hover:border-white/12 hover:bg-[#333333] motion-reduce:hover:shadow-none`
       } ${pulse ? "nyra-venue-card--pulse ring-1 ring-white/12" : ""}`}
     >
+      {shortlistAddGlow && showSelectedCheck ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-[2] rounded-xl nyra-venue-card__shortlist-glow-layer motion-reduce:hidden"
+        />
+      ) : null}
       {/* Inset frame: reads as print layout, not edge-to-edge product photography */}
       <div
         className={`relative shrink-0 px-1.5 pt-1.5 sm:px-2 sm:pt-2 ${
-          selected ? "bg-black/20" : "bg-black/25"
+          showSelectedChrome ? "bg-black/20" : "bg-black/25"
         }`}
       >
         <div className="relative aspect-[2/1] w-full overflow-hidden rounded-md bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] ring-1 ring-white/[0.06] sm:rounded-md">
-          {/* eslint-disable-next-line @next/next/no-img-element -- local SVG heroes */}
-          <img
+          <Image
             src={heroSrc}
-            alt=""
-            width={960}
-            height={480}
-            className={`absolute inset-0 h-full w-full origin-center object-cover transition-transform duration-[720ms] ${easePremium} motion-reduce:duration-0 group-hover:scale-[1.006] motion-reduce:group-hover:scale-100`}
+            alt={venue.name}
+            fill
+            sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, min(420px, 34vw)"
+            quality={90}
+            className={`object-cover transition-transform duration-[720ms] ${easePremium} motion-reduce:duration-0 group-hover:scale-[1.004] motion-reduce:group-hover:scale-100`}
           />
           <div
             aria-hidden
             className={`pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-black/35 transition-opacity duration-[720ms] ${easePremium} motion-reduce:duration-0 group-hover:opacity-95`}
           />
-          {selected ? (
+          {showSelectedCheck ? (
             <div className="absolute left-1.5 top-1.5 z-[1] sm:left-2 sm:top-2">
-              <VenueSelectedMark className="nyra-venue-selected-check" />
+              <VenueSelectedMark
+                className={checkArrival ? "nyra-venue-selected-check--arrive" : undefined}
+              />
             </div>
           ) : null}
         </div>
@@ -172,7 +192,7 @@ export function VenueCard({ venue, selected, pulse, onToggle }: VenueCardProps) 
           </h3>
         </header>
 
-        <EditorialHighlights highlights={venue.highlights} selected={selected} />
+        <EditorialHighlights highlights={venue.highlights} selected={showSelectedChrome} />
 
         <div
           className={`mt-2 grid grid-cols-1 gap-1.5 border-t border-chat-border pt-2 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-chat-border`}
@@ -189,25 +209,66 @@ export function VenueCard({ venue, selected, pulse, onToggle }: VenueCardProps) 
           {venue.vibe} <span className="text-chat-text-muted">·</span> {venue.whyFit}
         </p>
 
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-pressed={selected}
-          className={`mt-2 flex w-full items-center justify-center gap-1 rounded-md px-2.5 py-1 text-[11px] leading-snug transition-[background-color,color,transform,border-color] duration-200 ease-out active:scale-[0.995] motion-reduce:active:scale-100 ${
-            selected
-              ? "nyra-shortlist-toggle nyra-shortlist-toggle--selected shadow-none"
-              : "nyra-shortlist-toggle shadow-none"
-          }`}
-        >
-          {selected ? (
-            <>
-              <CheckStrokeIcon className="h-2.5 w-2.5 shrink-0 opacity-90" />
-              <span>Shortlisted</span>
-            </>
-          ) : (
-            "Add to shortlist"
-          )}
-        </button>
+        {inquirySent ? (
+          <button
+            type="button"
+            disabled
+            aria-label={lockedFooterText}
+            className="mt-2 flex w-full cursor-default items-center justify-center rounded-md border border-white/[0.08] bg-black/25 px-2.5 py-1 text-center text-[11px] leading-snug text-chat-text-muted disabled:cursor-default disabled:opacity-100"
+          >
+            {lockedFooterText}
+          </button>
+        ) : (
+          <div className="relative mt-2">
+            <button
+              type="button"
+              onClick={() => onToggle()}
+              aria-pressed={selected}
+              className={`flex w-full items-center justify-center gap-1 rounded-md px-2.5 py-1 text-[11px] leading-snug motion-safe:transition-[background-color,color,border-color,box-shadow] motion-safe:duration-[300ms] motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] transition-[background-color,color,border-color] duration-200 ease-out active:scale-[0.995] motion-reduce:active:scale-100 ${
+                selected
+                  ? "nyra-shortlist-toggle nyra-shortlist-toggle--selected shadow-none"
+                  : "nyra-shortlist-toggle shadow-none"
+              } ${
+                shortlistAddGlow
+                  ? "motion-safe:shadow-[0_0_0_1px_color-mix(in_srgb,var(--nyra-accent)_16%,transparent),0_0_28px_-10px_color-mix(in_srgb,var(--nyra-accent)_12%,transparent)] motion-safe:transition-[background-color,color,border-color,box-shadow] motion-safe:duration-[1000ms] motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]"
+                  : ""
+              }`}
+            >
+              <span className="relative grid min-h-[1.25rem] w-full place-items-center">
+                <span
+                  aria-hidden={selected}
+                  className={`col-start-1 row-start-1 transition-opacity duration-280 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none motion-reduce:duration-0 ${
+                    selected ? "pointer-events-none opacity-0" : "opacity-100"
+                  }`}
+                >
+                  Add to shortlist
+                </span>
+                <span
+                  aria-hidden={!selected}
+                  className={`col-start-1 row-start-1 transition-opacity duration-280 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none motion-reduce:duration-0 ${
+                    selected ? "opacity-100" : "pointer-events-none opacity-0"
+                  }`}
+                >
+                  ✓ Shortlisted
+                </span>
+              </span>
+            </button>
+            {selected && onRemoveFromShortlist ? (
+              <button
+                type="button"
+                aria-label={`Remove ${venue.name} from shortlist`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onRemoveFromShortlist();
+                }}
+                className="absolute right-1.5 top-1/2 z-[1] -translate-y-1/2 rounded px-1.5 py-0.5 text-[10px] font-medium leading-snug text-chat-text-muted transition-[background-color,color] duration-200 ease-out hover:bg-white/[0.06] hover:text-chat-text-secondary active:scale-[0.995] motion-reduce:active:scale-100"
+              >
+                Remove
+              </button>
+            ) : null}
+          </div>
+        )}
       </div>
     </div>
   );
