@@ -1,70 +1,55 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { RightRailVenueTile } from "@/components/RightRailVenueTile";
 import {
-  RAIL_STATUS_COPY,
-  partitionRailVenuesForShortlistSections,
+  flattenMasterShortlistActiveItems,
+  planCanvasRowStatus,
+  planModuleTypeBadgeLabel,
   railStatusDotClass,
-  type RailVenueTileItem,
-} from "@/components/selectedVenueRailModel";
+  railVendorKey,
+  type MasterShortlistGroup,
+  type MasterShortlistModuleInput,
+  type RailVendorTileItem,
+} from "@/components/selectedVendorRailModel";
 
-const RAIL_GROUP_HEADING =
-  "text-[12px] font-semibold tracking-[-0.01em] text-chat-text-secondary";
-
-const RAIL_MOTION_CLEAR_MS = 1500;
-const RAIL_STAGGER_MS = 44;
 const RAIL_SHORTLIST_ARRIVE_CLEAR_MS = 1300;
 
-function RailVenueTileRow({
+function RailPlanCanvasRow({
   item,
-  plannerDetailVenueId,
-  onVenueTilePress,
+  plannerRef,
+  onVendorTilePress,
   visualTone,
   statusDotClass,
-  motionSurfaceClass,
-  motionStyle,
   shortlistArriveMotion = false,
-  /** Keeps a stable wrapper so the arrive class can drop without remounting the tile. */
   useShortlistArriveShell = false,
   reduceMotion,
 }: {
-  item: RailVenueTileItem;
-  plannerDetailVenueId: string | null;
-  onVenueTilePress: (id: string) => void;
+  item: RailVendorTileItem;
+  plannerRef: { moduleId: string; vendorId: string } | null;
+  onVendorTilePress: (scope: { moduleId: string; vendorId: string }) => void;
   visualTone: "actionable" | "neutral";
   statusDotClass?: string | null;
-  motionSurfaceClass?: string;
-  motionStyle?: CSSProperties;
-  /** New row in “Ready to contact” — subtle enter + glow (see globals). */
   shortlistArriveMotion?: boolean;
   useShortlistArriveShell?: boolean;
   reduceMotion: boolean;
 }) {
-  const { statusLabel, helperText } = RAIL_STATUS_COPY[item.status];
+  const statusLabel = planCanvasRowStatus(item.status);
   const tile = (
     <RightRailVenueTile
       className="min-w-0 w-full"
       name={item.name}
+      typeBadge={planModuleTypeBadgeLabel(item.moduleType)}
       statusLabel={statusLabel}
-      helperText={helperText}
+      helperText=""
       statusDotClass={statusDotClass ?? null}
-      onPress={() => onVenueTilePress(item.id)}
-      isSelected={plannerDetailVenueId === item.id}
+      onPress={() => onVendorTilePress({ moduleId: item.moduleId, vendorId: item.id })}
+      isSelected={plannerRef?.moduleId === item.moduleId && plannerRef.vendorId === item.id}
       isArchived={item.isArchived === true}
       visualTone={visualTone}
     />
   );
-
-  if (motionSurfaceClass && !reduceMotion) {
-    return (
-      <div className="min-w-0" style={motionStyle}>
-        <div className={`min-w-0 ${motionSurfaceClass}`}>{tile}</div>
-      </div>
-    );
-  }
 
   if (useShortlistArriveShell) {
     const arriveActive = Boolean(shortlistArriveMotion) && !reduceMotion;
@@ -81,46 +66,45 @@ function RailVenueTileRow({
 }
 
 export type ShortlistRailCollapsedProps = {
-  activeRailVenues: RailVenueTileItem[];
-  archivedRailVenues: RailVenueTileItem[];
-  outreachMode: boolean;
-  plannerDetailVenueId: string | null;
-  onVenueTilePress: (venueId: string) => void;
+  /** Planning modules to show: session-activated and/or with shortlisted vendors (same shape as the full list). */
+  visibleShortlistByModule: readonly MasterShortlistModuleInput[];
+  /** Categorized shortlist; flattened to a single plan list for display. */
+  groups: readonly MasterShortlistGroup[];
+  archivedRailVenues: RailVendorTileItem[];
+  hasAnyOutreach: boolean;
+  plannerRef: { moduleId: string; vendorId: string } | null;
+  onVendorTilePress: (scope: { moduleId: string; vendorId: string }) => void;
   reduceMotion: boolean;
 };
 
 export function ShortlistRailCollapsed({
-  activeRailVenues,
+  visibleShortlistByModule,
+  groups,
   archivedRailVenues,
-  outreachMode,
-  plannerDetailVenueId,
-  onVenueTilePress,
+  hasAnyOutreach,
+  plannerRef,
+  onVendorTilePress,
   reduceMotion,
 }: ShortlistRailCollapsedProps) {
-  const headerDescription = outreachMode
-    ? "Tap a venue to add notes, send a follow-up, or remove it from your shortlist."
-    : "These are the only names we include in your outreach bundle—curate the list, then continue.";
-
-  const { readyToContact, inProgress } = useMemo(
-    () => partitionRailVenuesForShortlistSections(activeRailVenues),
-    [activeRailVenues]
+  const flatItems = useMemo(
+    () => flattenMasterShortlistActiveItems(groups, visibleShortlistByModule),
+    [groups, visibleShortlistByModule]
   );
 
-  const prevSectionByVenueIdRef = useRef<Map<string, "ready" | "progress">>(new Map());
-  const [inProgressMotionDelays, setInProgressMotionDelays] = useState<Map<string, number>>(
-    () => new Map()
-  );
-  const prevReadyLenRef = useRef(readyToContact.length);
-  const [readyGroupDim, setReadyGroupDim] = useState(false);
+  const isPlanEmpty = flatItems.length === 0;
 
-  const shortlistArriveInitialDoneRef = useRef(false);
-  const prevReadyIdsRef = useRef<string[]>([]);
+  const readyItems = useMemo(
+    () => flatItems.filter((i) => i.status === "shortlisted"),
+    [flatItems]
+  );
+
+  const prevReadyKeysRef = useRef<string[]>([]);
   const shortlistArriveTimeoutsRef = useRef<Map<string, number>>(new Map());
-  const [shortlistArriveIds, setShortlistArriveIds] = useState<Set<string>>(() => new Set());
+  const shortlistArriveInitialDoneRef = useRef(false);
+  const [shortlistArriveKeys, setShortlistArriveKeys] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     return () => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- read latest timeout ids at unmount
       const pending = shortlistArriveTimeoutsRef.current;
       for (const tid of pending.values()) {
         window.clearTimeout(tid);
@@ -130,109 +114,41 @@ export function ShortlistRailCollapsed({
   }, []);
 
   useEffect(() => {
-    const next = readyToContact.map((i) => i.id);
+    const next = readyItems.map((i) => railVendorKey(i.moduleId, i.id));
     if (!shortlistArriveInitialDoneRef.current) {
       shortlistArriveInitialDoneRef.current = true;
-      prevReadyIdsRef.current = next;
+      prevReadyKeysRef.current = next;
       return;
     }
     if (reduceMotion) {
-      prevReadyIdsRef.current = next;
+      prevReadyKeysRef.current = next;
       return;
     }
-    const prevSet = new Set(prevReadyIdsRef.current);
-    const added = next.filter((id) => !prevSet.has(id));
-    prevReadyIdsRef.current = next;
+    const prevSet = new Set(prevReadyKeysRef.current);
+    const added = next.filter((k) => !prevSet.has(k));
+    prevReadyKeysRef.current = next;
     if (added.length === 0) return;
 
-    setShortlistArriveIds((prev) => {
+    setShortlistArriveKeys((prev) => {
       const merged = new Set(prev);
-      for (const id of added) merged.add(id);
+      for (const k of added) merged.add(k);
       return merged;
     });
 
-    for (const id of added) {
-      const existing = shortlistArriveTimeoutsRef.current.get(id);
+    for (const k of added) {
+      const existing = shortlistArriveTimeoutsRef.current.get(k);
       if (existing != null) window.clearTimeout(existing);
       const tid = window.setTimeout(() => {
-        shortlistArriveTimeoutsRef.current.delete(id);
-        setShortlistArriveIds((prev) => {
+        shortlistArriveTimeoutsRef.current.delete(k);
+        setShortlistArriveKeys((prev) => {
           const n = new Set(prev);
-          n.delete(id);
+          n.delete(k);
           return n;
         });
       }, RAIL_SHORTLIST_ARRIVE_CLEAR_MS);
-      shortlistArriveTimeoutsRef.current.set(id, tid);
+      shortlistArriveTimeoutsRef.current.set(k, tid);
     }
-  }, [readyToContact, reduceMotion]);
-
-  useEffect(() => {
-    const n = readyToContact.length;
-    const prev = prevReadyLenRef.current;
-    if (reduceMotion) {
-      prevReadyLenRef.current = n;
-    } else if (outreachMode && n < prev && n > 0) {
-      const raf = requestAnimationFrame(() => {
-        setReadyGroupDim(true);
-      });
-      const t = window.setTimeout(() => setReadyGroupDim(false), 280);
-      prevReadyLenRef.current = n;
-      return () => {
-        cancelAnimationFrame(raf);
-        window.clearTimeout(t);
-      };
-    } else {
-      prevReadyLenRef.current = n;
-    }
-  }, [readyToContact.length, outreachMode, reduceMotion]);
-
-  useEffect(() => {
-    const prev = prevSectionByVenueIdRef.current;
-    const next = new Map<string, "ready" | "progress">();
-    for (const i of readyToContact) next.set(i.id, "ready");
-    for (const i of inProgress) next.set(i.id, "progress");
-
-    prevSectionByVenueIdRef.current = next;
-
-    if (reduceMotion) {
-      return;
-    }
-
-    const motionDelays = new Map<string, number>();
-    let stagger = 0;
-    for (const item of inProgress) {
-      if (prev.get(item.id) === "ready") {
-        motionDelays.set(item.id, stagger);
-        stagger += RAIL_STAGGER_MS;
-      }
-    }
-
-    if (motionDelays.size === 0) {
-      return;
-    }
-
-    const raf = requestAnimationFrame(() => {
-      setInProgressMotionDelays(motionDelays);
-    });
-    const clearTimer = window.setTimeout(() => {
-      setInProgressMotionDelays(new Map());
-    }, RAIL_MOTION_CLEAR_MS);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.clearTimeout(clearTimer);
-    };
-  }, [readyToContact, inProgress, reduceMotion]);
-
-  const secondSectionTitle = useMemo(() => {
-    if (inProgress.length === 0) return null;
-    const anyInquirySent = inProgress.some((i) => i.status === "inquiry_sent");
-    const anyResponded = inProgress.some((i) => i.status === "responded");
-    if (anyResponded && !anyInquirySent) {
-      return "Responded";
-    }
-    return "In progress";
-  }, [inProgress]);
+  }, [readyItems, reduceMotion]);
 
   const archivedEyebrowClass =
     "text-[11px] font-semibold uppercase tracking-[0.16em] text-chat-text-muted";
@@ -240,96 +156,58 @@ export function ShortlistRailCollapsed({
   return (
     <>
       <header className="max-w-[16rem]">
-        <div className="min-w-0 flex-1">
-          <p className="nyra-eyebrow">Shortlist</p>
-          <h2
-            id="nyra-rail-shortlist-heading"
-            className="mt-2.5 text-lg font-semibold leading-[1.2] tracking-[-0.03em] text-chat-text-primary"
-          >
-            Selected venues
-          </h2>
-        </div>
-        <p className="mt-2.5 text-[13px] leading-[1.55] text-chat-text-secondary">{headerDescription}</p>
+        <h2
+          id="nyra-rail-plan-heading"
+          className="text-lg font-semibold leading-[1.2] tracking-[-0.03em] text-chat-text-primary"
+        >
+          Your plan
+        </h2>
+        {isPlanEmpty ? (
+          <div className="mt-6 space-y-2">
+            <p className="text-[13px] leading-[1.55] text-chat-text-secondary">
+              Nothing here yet.
+            </p>
+            <p className="text-[13px] leading-[1.55] text-chat-text-muted">
+              Shortlist anything you like — it will appear here.
+            </p>
+          </div>
+        ) : (
+          <p className="mt-2.5 text-[13px] leading-[1.55] text-chat-text-secondary">
+            {hasAnyOutreach
+              ? "Tap an item for notes, follow-ups, and status."
+              : "Shortlist matches from any category—they show up here in one place."}
+          </p>
+        )}
       </header>
 
-      <div
-        className="mt-6 space-y-6"
-        role="region"
-        aria-labelledby="nyra-rail-shortlist-heading"
-      >
-        {activeRailVenues.length === 0 ? (
-          <p className="text-[13px] leading-relaxed text-chat-text-muted">
-            No venues yet—tap Add to shortlist on a match in the thread.
-          </p>
-        ) : (
-          <>
-            {readyToContact.length > 0 ? (
-              <section
-                className={`min-w-0 motion-safe:transition-opacity motion-safe:duration-300 motion-safe:ease-out ${
-                  readyGroupDim ? "motion-safe:opacity-[0.72]" : ""
-                }`}
-                aria-label={`Ready to contact, ${readyToContact.length}`}
-              >
-                <h3 className={RAIL_GROUP_HEADING}>
-                  Ready to contact ({readyToContact.length})
-                </h3>
-                <div className="mt-2 flex min-w-0 flex-col gap-2">
-                  {readyToContact.map((item) => (
-                    <RailVenueTileRow
-                      key={item.id}
-                      item={item}
-                      plannerDetailVenueId={plannerDetailVenueId}
-                      onVenueTilePress={onVenueTilePress}
-                      visualTone="actionable"
-                      statusDotClass={null}
-                      useShortlistArriveShell
-                      shortlistArriveMotion={shortlistArriveIds.has(item.id)}
-                      reduceMotion={reduceMotion}
-                    />
-                  ))}
-                </div>
-              </section>
-            ) : null}
-            {inProgress.length > 0 && secondSectionTitle ? (
-              <section
-                className="min-w-0"
-                aria-label={`${secondSectionTitle}, ${inProgress.length}`}
-              >
-                <h3 className={RAIL_GROUP_HEADING}>
-                  {secondSectionTitle} ({inProgress.length})
-                </h3>
-                <div className="mt-2 flex min-w-0 flex-col gap-2">
-                  {inProgress.map((item) => {
-                    const motionDelays = reduceMotion ? null : inProgressMotionDelays;
-                    const delayMs = motionDelays?.get(item.id);
-                    const motionActive =
-                      !reduceMotion && delayMs !== undefined && outreachMode;
-                    return (
-                      <RailVenueTileRow
-                        key={item.id}
-                        item={item}
-                        plannerDetailVenueId={plannerDetailVenueId}
-                        onVenueTilePress={onVenueTilePress}
-                        visualTone="neutral"
-                        statusDotClass={railStatusDotClass(item.status)}
-                        motionSurfaceClass={
-                          motionActive ? "nyra-rail-tile--inprogress-motion" : undefined
-                        }
-                        motionStyle={
-                          motionActive
-                            ? ({ "--nyra-rail-stagger": `${delayMs}ms` } as CSSProperties)
-                            : undefined
-                        }
-                        reduceMotion={reduceMotion}
-                      />
-                    );
-                  })}
-                </div>
-              </section>
-            ) : null}
-          </>
-        )}
-      </div>
+      {!isPlanEmpty ? (
+        <div
+          className="mt-6 flex min-w-0 flex-col gap-2"
+          role="list"
+          aria-labelledby="nyra-rail-plan-heading"
+        >
+          {flatItems.map((item) => {
+            const k = railVendorKey(item.moduleId, item.id);
+            const actionable = item.status === "shortlisted";
+            return (
+              <div key={k} role="listitem" className="min-w-0">
+                <RailPlanCanvasRow
+                  item={item}
+                  plannerRef={plannerRef}
+                  onVendorTilePress={onVendorTilePress}
+                  visualTone={actionable ? "actionable" : "neutral"}
+                  statusDotClass={
+                    actionable ? null : railStatusDotClass(item.status)
+                  }
+                  useShortlistArriveShell={actionable}
+                  shortlistArriveMotion={actionable && shortlistArriveKeys.has(k)}
+                  reduceMotion={reduceMotion}
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       {archivedRailVenues.length > 0 ? (
         <div className="mt-8" role="region" aria-labelledby="nyra-rail-archived-heading">
@@ -341,11 +219,11 @@ export function ShortlistRailCollapsed({
           </p>
           <div className="mt-2 flex min-w-0 flex-col gap-2">
             {archivedRailVenues.map((item) => (
-              <RailVenueTileRow
-                key={item.id}
+              <RailPlanCanvasRow
+                key={railVendorKey(item.moduleId, item.id)}
                 item={item}
-                plannerDetailVenueId={plannerDetailVenueId}
-                onVenueTilePress={onVenueTilePress}
+                plannerRef={plannerRef}
+                onVendorTilePress={onVendorTilePress}
                 visualTone="neutral"
                 statusDotClass={railStatusDotClass(item.status)}
                 reduceMotion={reduceMotion}

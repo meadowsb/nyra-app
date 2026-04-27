@@ -8,18 +8,18 @@ import { LandingRevealOnView } from "@/components/LandingRevealOnView";
 const steps = [
   {
     kind: "details" as const,
-    title: "Tell us what you need",
-    body: "Share your guest count, location, style, budget, and any must-haves.",
+    title: "Tell Nyra what you're imagining",
+    body: "Share your guest count, location, style, budget, and priorities.",
   },
   {
     kind: "match" as const,
-    title: "Nyra finds the fit",
-    body: "We shortlist venues that match your brief, not just your keywords.",
+    title: "See your plan come together",
+    body: "Get curated venues, vendors, and recommendations tailored to you.",
   },
   {
     kind: "outreach" as const,
-    title: "We contact venues",
-    body: "We reach out for pricing, availability, and fit—then bring the answers back to you.",
+    title: "We handle the back-and-forth",
+    body: "We reach out, gather pricing and availability, and bring everything back in one place.",
   },
 ] as const;
 
@@ -108,9 +108,9 @@ export function LandingHowItWorksSection() {
       <LandingRevealOnView className="mx-auto max-w-[1200px] px-2 py-20 sm:px-3 sm:py-24 lg:py-28">
         <div className="nyra-landing-glass-header nyra-landing-section-head-card nyra-landing-reveal-head mx-auto max-w-2xl text-center">
           <SectionLabel>How it works</SectionLabel>
-          <h2 className="nyra-landing-section-headline">Real matches. Real numbers.</h2>
+          <h2 className="nyra-landing-section-headline">Plan everything, without the chaos</h2>
           <p className="nyra-landing-section-sub mx-auto max-w-md">
-            No inbox chasing. No guesswork.
+            From venues to vendors to timelines — Nyra handles the back-and-forth so you don&apos;t have to.
           </p>
         </div>
         <ol className="nyra-landing-section-head-to-content nyra-landing-reveal-stagger mx-auto grid max-w-5xl gap-5 sm:grid-cols-3 sm:items-stretch sm:gap-4 lg:gap-5">

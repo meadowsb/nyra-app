@@ -1,9 +1,10 @@
 "use client";
 
-import type { Venue } from "@/components/VenueCard";
-import type { OutreachItem, OutreachItemStatus } from "@/components/SelectedVenuesSidebar";
-import type { VenuePlannerEntry } from "@/components/venuePlannerState";
-import { getVenuePlannerEntry } from "@/components/venuePlannerState";
+import type { Vendor } from "@/components/VenueCard";
+import type { OutreachItem, OutreachItemStatus } from "@/components/SelectedVendorsSidebar";
+import type { VendorDetails } from "@/components/vendorPlannerState";
+import { getVendorDetails } from "@/components/vendorPlannerState";
+import { moduleEntityLabels, type ModuleType } from "@/lib/modules";
 
 function CloseIcon({ className }: { className?: string }) {
   return (
@@ -37,7 +38,7 @@ function availabilityLabel(status: OutreachItemStatus | undefined): string {
 }
 
 function latestNotePreview(
-  planner: VenuePlannerEntry,
+  planner: VendorDetails,
   maxLen = 72
 ): string {
   const merged = [
@@ -57,10 +58,11 @@ const cellClass =
   "min-w-[7.5rem] border-b border-chat-border-muted px-2 py-2.5 text-[13px] leading-snug text-chat-text-secondary";
 
 export type ComparisonViewProps = {
-  venueIds: readonly string[];
-  venueById: Map<string, Venue>;
+  moduleType?: ModuleType;
+  vendorIds: readonly string[];
+  vendorById: Map<string, Vendor>;
   outreachById: Map<string, OutreachItem>;
-  venuePlannerById: Readonly<Record<string, VenuePlannerEntry>>;
+  vendorDetailsById: Readonly<Record<string, VendorDetails>>;
   onClose: () => void;
   /** Shown beside close — optional second action in wide compare header */
   onUpdateAllVenues?: () => void;
@@ -69,20 +71,22 @@ export type ComparisonViewProps = {
 const ROW_KEYS = ["price", "capacity", "availability", "notes"] as const;
 
 export function ComparisonView({
-  venueIds,
-  venueById,
+  moduleType = "venue",
+  vendorIds,
+  vendorById,
   outreachById,
-  venuePlannerById,
+  vendorDetailsById,
   onClose,
   onUpdateAllVenues,
 }: ComparisonViewProps) {
-  const columns = venueIds.map((id) => {
-    const v = venueById.get(id);
+  const el = moduleEntityLabels(moduleType);
+  const columns = vendorIds.map((id) => {
+    const v = vendorById.get(id);
     const row = outreachById.get(id);
-    const planner = getVenuePlannerEntry(venuePlannerById, id);
+    const planner = getVendorDetails(vendorDetailsById, id);
     return {
       id,
-      name: v?.name ?? "Venue",
+      name: v?.name ?? el.defaultCardName,
       price: v?.price ?? "—",
       capacity: v?.capacity ?? "—",
       availability: availabilityLabel(row?.status),
@@ -99,7 +103,7 @@ export function ComparisonView({
             Side by side
           </h2>
           <p className="mt-1.5 text-[12px] leading-snug text-chat-text-muted">
-            Price, capacity, availability, and your latest note per venue.
+            {`Price, capacity, availability, and your latest note per ${el.listNounSingular}.`}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -107,10 +111,10 @@ export function ComparisonView({
             <button
               type="button"
               onClick={onUpdateAllVenues}
-              disabled={venueIds.length === 0}
+              disabled={vendorIds.length === 0}
               className="nyra-btn-chat-secondary px-3 py-2 text-[12px] disabled:pointer-events-none disabled:opacity-45"
             >
-              Update all venues
+              {el.updateAllLabel}
             </button>
           ) : null}
           <button
@@ -127,7 +131,7 @@ export function ComparisonView({
       <div className="mt-4 overflow-x-auto rounded-xl border border-chat-border-muted">
         {columns.length === 0 ? (
           <p className="px-4 py-8 text-center text-[13px] text-chat-text-muted">
-            Add venues to your shortlist to compare them here.
+            {`Add ${el.listNoun} to your shortlist to compare them here.`}
           </p>
         ) : null}
         {columns.length === 0 ? null : (

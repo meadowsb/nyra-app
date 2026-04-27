@@ -2,7 +2,8 @@
 
 import { useId, useMemo, useState } from "react";
 
-import type { OutreachItem } from "@/components/SelectedVenuesSidebar";
+import type { OutreachItem } from "@/components/SelectedVendorsSidebar";
+import { moduleEntityLabels, type ModuleType } from "@/lib/modules";
 
 type UpdateAllScope = "all" | "no_response" | "select";
 
@@ -16,13 +17,14 @@ type UpdateAllVenuesForm = {
 type VenueOption = { id: string; name: string };
 
 type UpdateAllVenuesModalProps = {
+  moduleType?: ModuleType;
   open: boolean;
   onClose: () => void;
   /** Active shortlist venues (in order) */
   venues: readonly VenueOption[];
   outreachItems: readonly OutreachItem[];
   reduceMotion: boolean;
-  onSendFollowUps: (venueIds: readonly string[], message: string) => void;
+  onSendFollowUps: (vendorIds: readonly string[], message: string) => void;
 };
 
 const inputClass =
@@ -44,11 +46,11 @@ function buildFollowUpMessage(form: UpdateAllVenuesForm): string {
   return lines.join("\n");
 }
 
-function venueIdsWithoutResponse(
+function vendorIdsWithoutResponse(
   venueIds: readonly string[],
   outreachItems: readonly OutreachItem[]
 ): string[] {
-  const byId = new Map(outreachItems.map((r) => [r.venueId, r]));
+  const byId = new Map(outreachItems.map((r) => [r.vendorId, r]));
   return venueIds.filter((id) => {
     const row = byId.get(id);
     return row && row.status !== "replied";
@@ -56,6 +58,7 @@ function venueIdsWithoutResponse(
 }
 
 export function UpdateAllVenuesModal({
+  moduleType = "venue",
   open,
   onClose,
   venues,
@@ -63,6 +66,7 @@ export function UpdateAllVenuesModal({
   reduceMotion,
   onSendFollowUps,
 }: UpdateAllVenuesModalProps) {
+  const m = moduleEntityLabels(moduleType);
   const titleId = useId();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState<UpdateAllVenuesForm>({
@@ -79,7 +83,7 @@ export function UpdateAllVenuesModal({
   const resolvedIds = useMemo(() => {
     const ids = venues.map((v) => v.id);
     if (scope === "all") return ids;
-    if (scope === "no_response") return venueIdsWithoutResponse(ids, outreachItems);
+    if (scope === "no_response") return vendorIdsWithoutResponse(ids, outreachItems);
     return ids.filter((id) => selectedIds.has(id));
   }, [venues, scope, selectedIds, outreachItems]);
 
@@ -147,8 +151,8 @@ export function UpdateAllVenuesModal({
           {step === 1 ? (
             <div className="flex flex-col gap-4">
               <p className="text-[13px] leading-relaxed text-chat-text-secondary">
-                Share any updates you want venues to know. This adds a follow-up to each thread —
-                it does not replace your original request.
+                {`Share any updates you want ${m.listNoun} to know. This adds a follow-up to each thread —
+                it does not replace your original request.`}
               </p>
               <div>
                 <label className={labelClass} htmlFor="uav-guests">
@@ -199,7 +203,13 @@ export function UpdateAllVenuesModal({
                   className={`${inputClass} min-h-[4.5rem] resize-y`}
                   value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  placeholder="Anything else venues should factor in…"
+                  placeholder={
+                    m.isCatering
+                      ? "Anything else caterers should factor in…"
+                      : moduleType === "photography"
+                        ? "Anything else photographers should factor in…"
+                        : "Anything else venues should factor in…"
+                  }
                 />
               </div>
             </div>
@@ -217,7 +227,9 @@ export function UpdateAllVenuesModal({
                   onChange={() => setScope("all")}
                 />
                 <span>
-                  <span className="text-[13px] font-medium text-chat-text-primary">All venues</span>
+                  <span className="text-[13px] font-medium text-chat-text-primary">
+                    {`All ${m.listNoun}`}
+                  </span>
                   <span className="mt-0.5 block text-[12px] text-chat-text-muted">
                     Everyone on your active shortlist ({venues.length}).
                   </span>
@@ -233,10 +245,10 @@ export function UpdateAllVenuesModal({
                 />
                 <span>
                   <span className="text-[13px] font-medium text-chat-text-primary">
-                    Only venues without responses
+                    {`Only ${m.listNoun} without responses`}
                   </span>
                   <span className="mt-0.5 block text-[12px] text-chat-text-muted">
-                    Skips venues that have already replied.
+                    {`Skips ${m.listNoun} that have already replied.`}
                   </span>
                 </span>
               </label>
@@ -249,7 +261,9 @@ export function UpdateAllVenuesModal({
                   onChange={() => setScope("select")}
                 />
                 <span>
-                  <span className="text-[13px] font-medium text-chat-text-primary">Select venues</span>
+                  <span className="text-[13px] font-medium text-chat-text-primary">
+                    {`Select ${m.listNoun}`}
+                  </span>
                   <span className="mt-0.5 block text-[12px] text-chat-text-muted">
                     Choose exactly who receives this follow-up.
                   </span>
@@ -280,8 +294,9 @@ export function UpdateAllVenuesModal({
             <div className="space-y-4">
               <p className="text-[14px] leading-relaxed text-chat-text-primary">
                 We’ll follow up with{" "}
-                <span className="font-semibold text-nyra-accent">{resolvedIds.length}</span> venue
-                {resolvedIds.length === 1 ? "" : "s"} using your updated details.
+                <span className="font-semibold text-nyra-accent">{resolvedIds.length}</span>{" "}
+                {resolvedIds.length === 1 ? m.listNounSingular : m.listNoun} using your updated
+                details.
               </p>
               <div className="rounded-xl border border-chat-border-muted bg-white/[0.02] p-3">
                 <p className={labelClass}>Message preview</p>

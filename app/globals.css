@@ -481,152 +481,6 @@ body {
 
 /* —— Landing: hero-scoped atmosphere + motion (dark shell only) —— */
 
-/** Landing hero: drifting “cloud” motion (transform + opacity only). */
-@keyframes nyraCloudFloat1 {
-  0% {
-    transform: translate3d(-36%, -34%, 0) scale(0.75);
-    opacity: 0.2;
-  }
-  17% {
-    transform: translate3d(-6%, -6%, 0) scale(1.05);
-    opacity: 0.38;
-  }
-  50% {
-    transform: translate3d(34%, 30%, 0) scale(1.4);
-    opacity: 0.52;
-  }
-  83% {
-    transform: translate3d(10%, -22%, 0) scale(0.95);
-    opacity: 0.28;
-  }
-  100% {
-    transform: translate3d(-28%, -18%, 0) scale(0.82);
-    opacity: 0.22;
-  }
-}
-
-@keyframes nyraCloudFloat2 {
-  0% {
-    transform: translate3d(32%, 26%, 0) scale(0.78);
-    opacity: 0.22;
-  }
-  17% {
-    transform: translate3d(8%, 4%, 0) scale(1.08);
-    opacity: 0.36;
-  }
-  50% {
-    transform: translate3d(-34%, -28%, 0) scale(1.38);
-    opacity: 0.55;
-  }
-  83% {
-    transform: translate3d(-12%, 18%, 0) scale(0.92);
-    opacity: 0.32;
-  }
-  100% {
-    transform: translate3d(26%, 22%, 0) scale(0.8);
-    opacity: 0.18;
-  }
-}
-
-@keyframes nyraCloudFloat3 {
-  0% {
-    transform: translate3d(-30%, 32%, 0) scale(0.76);
-    opacity: 0.18;
-  }
-  17% {
-    transform: translate3d(-4%, 8%, 0) scale(1.02);
-    opacity: 0.34;
-  }
-  50% {
-    transform: translate3d(38%, -26%, 0) scale(1.4);
-    opacity: 0.5;
-  }
-  83% {
-    transform: translate3d(14%, -10%, 0) scale(1.06);
-    opacity: 0.4;
-  }
-  100% {
-    transform: translate3d(-22%, 28%, 0) scale(0.88);
-    opacity: 0.24;
-  }
-}
-
-@keyframes nyraCloudWashFloatRose {
-  0% {
-    transform: translate3d(-32%, 8%, 0) scale(0.88);
-    opacity: 0.32;
-  }
-  50% {
-    transform: translate3d(28%, -18%, 0) scale(1.22);
-    opacity: 0.52;
-  }
-  100% {
-    transform: translate3d(36%, -22%, 0) scale(0.94);
-    opacity: 0.38;
-  }
-}
-
-@keyframes nyraCloudWashFloatViolet {
-  0% {
-    transform: translate3d(30%, -12%, 0) scale(0.95);
-    opacity: 0.35;
-  }
-  50% {
-    transform: translate3d(-28%, 22%, 0) scale(1.18);
-    opacity: 0.5;
-  }
-  100% {
-    transform: translate3d(-36%, 26%, 0) scale(0.92);
-    opacity: 0.36;
-  }
-}
-
-@keyframes nyraCloudWashFloatChampagne {
-  0% {
-    transform: translate3d(-18%, 24%, 0) scale(0.86);
-    opacity: 0.3;
-  }
-  50% {
-    transform: translate3d(26%, -26%, 0) scale(1.2);
-    opacity: 0.48;
-  }
-  100% {
-    transform: translate3d(32%, -32%, 0) scale(0.9);
-    opacity: 0.34;
-  }
-}
-
-@keyframes nyraCloudWashFloatAccent {
-  0% {
-    transform: translate3d(-34%, -16%, 0) scale(0.9);
-    opacity: 0.28;
-  }
-  50% {
-    transform: translate3d(26%, 20%, 0) scale(1.16);
-    opacity: 0.46;
-  }
-  100% {
-    transform: translate3d(34%, 12%, 0) scale(0.94);
-    opacity: 0.32;
-  }
-}
-
-/** Full-hero semi-transparent gradient wash (slow diagonal drift). */
-@keyframes nyraHeroAtmosphereSheen {
-  0% {
-    transform: translate3d(-22%, -8%, 0) rotate(11deg) scale(1.04);
-    opacity: 0.44;
-  }
-  50% {
-    transform: translate3d(22%, 10%, 0) rotate(11deg) scale(1.1);
-    opacity: 0.52;
-  }
-  100% {
-    transform: translate3d(-22%, -8%, 0) rotate(11deg) scale(1.04);
-    opacity: 0.44;
-  }
-}
-
 @keyframes nyraHeroReveal {
   from {
     opacity: 0;
@@ -646,27 +500,6 @@ body {
   to {
     opacity: 0.95;
     transform: translate3d(0, 0, 0);
-  }
-}
-
-@keyframes nyraHeroAtmosphereIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes nyraComposerGlow {
-  0%,
-  100% {
-    opacity: 0.72;
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: translate3d(2%, -1%, 0) scale(1.04);
   }
 }
 
@@ -712,9 +545,9 @@ body {
 
 /** Layered glass — header intro tiles (lighter, softer blur). */
 .nyra-landing-root .nyra-landing-glass-header {
-  background: rgba(20, 20, 25, 0.55);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(20, 20, 25, 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
     0 10px 40px rgba(0, 0, 0, 0.4),
@@ -735,9 +568,9 @@ body {
 
 /** Layered glass — content cards (stronger tint + deeper blur). */
 .nyra-landing-root .nyra-landing-glass-content {
-  background: rgba(20, 20, 25, 0.7);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(20, 20, 25, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.09);
   box-shadow:
     0 10px 40px rgba(0, 0, 0, 0.4),
@@ -805,9 +638,9 @@ body {
   height: 4.25rem;
   padding: 0.75rem;
   border-radius: 0.75rem;
-  background: rgba(20, 20, 25, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(20, 20, 25, 0.68);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
     0 6px 20px rgba(0, 0, 0, 0.3),
@@ -1037,11 +870,17 @@ body {
   .nyra-landing-root .nyra-landing-glass-content:hover {
     transform: none;
   }
+
+  .nyra-landing-hero-section .nyra-landing-glass-header.nyra-landing-composer:hover,
+  .nyra-landing-hero-section .nyra-landing-glass-header.nyra-landing-composer:focus-within {
+    transform: none;
+  }
 }
 
-/** Hero section: deep base + colorful layers (does not style How it works / testimonials). */
+/** Hero section: full-bleed media + overlay (does not style How it works / testimonials). */
 .nyra-landing-hero-section {
-  background-color: var(--chat-canvas);
+  width: 100%;
+  background-color: #070608;
   min-height: min(82vh, 52rem);
   min-height: min(82svh, 52rem);
 }
@@ -1053,243 +892,36 @@ body {
   }
 }
 
-.nyra-landing-hero-base {
-  pointer-events: none;
+/** Full-bleed hero media: cover crop with no letterboxing (works across aspect ratios). */
+.nyra-landing-hero-media-shell {
   position: absolute;
   inset: 0;
-  z-index: 0;
-  background:
-    linear-gradient(165deg, #070608 0%, #0c0a10 32%, #090812 68%, #060508 100%),
-    radial-gradient(ellipse 120% 80% at 50% 100%, rgba(10, 8, 16, 0.98) 0%, transparent 58%);
-}
-
-/** Hero-only atmosphere: orbs + wash, fades in first; color stays above fold. */
-.nyra-landing-hero-atmosphere {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  z-index: 1;
   overflow: hidden;
-  opacity: 0;
-  animation: nyraHeroAtmosphereIn 0.95s ease-out forwards;
-  mask-image: linear-gradient(
-    to bottom,
-    black 0%,
-    black min(86%, 36rem),
-    rgba(0, 0, 0, 0.55) 94%,
-    transparent 100%
-  );
+  width: 100%;
+  height: 100%;
 }
 
-/** Subtle edge vignette: centers the glow without affecting hero layout. */
-.nyra-landing-hero-atmosphere::after {
-  content: "";
+/**
+ * Hero video: full-bleed via object-fit: cover (no letterboxing).
+ * Grade the picture only — no blur on the video element (blur reads as soft / low-res).
+ */
+.nyra-landing-hero-media-shell > video {
+  opacity: 1;
+  object-position: 50% 42%;
+  filter: saturate(1.05) contrast(1.05);
+}
+
+/** Readability gradient over the video (video layer stays sharp underneath). */
+.nyra-landing-hero-overlay {
+  pointer-events: none;
   position: absolute;
   inset: 0;
-  z-index: 4;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 92% 85% at 50% 42%, transparent 0%, transparent 48%, rgba(4, 3, 8, 0.38) 100%),
-    radial-gradient(ellipse 130% 100% at 50% 50%, transparent 62%, rgba(6, 5, 10, 0.72) 100%);
-}
-
-.nyra-landing-hero-atmosphere__washes {
-  position: absolute;
-  inset: -28% -18% -8%;
-  z-index: 0;
-  pointer-events: none;
-}
-
-/** Each wash layer is its own element + animation (not a single stacked background). */
-.nyra-landing-hero-wash-blob {
-  position: absolute;
-  border-radius: 50%;
-  will-change: transform, opacity;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  animation-direction: alternate;
-  filter: blur(160px);
-}
-
-.nyra-landing-hero-wash-blob--rose {
-  width: min(110vw, 1120px);
-  height: min(110vw, 1120px);
-  left: -12%;
-  top: -26%;
-  background: radial-gradient(
-    closest-side,
-    rgba(190, 120, 150, 0.58) 0%,
-    rgba(165, 95, 128, 0.34) 32%,
-    rgba(120, 72, 98, 0.14) 52%,
-    transparent 68%
-  );
-  animation-name: nyraCloudWashFloatRose;
-  animation-duration: 16s;
-  animation-delay: -2s;
-}
-
-.nyra-landing-hero-wash-blob--violet {
-  width: min(108vw, 1080px);
-  height: min(108vw, 1080px);
-  right: -16%;
-  top: -8%;
-  filter: blur(180px);
-  background: radial-gradient(
-    closest-side,
-    rgba(110, 90, 190, 0.48) 0%,
-    rgba(88, 72, 158, 0.28) 34%,
-    rgba(52, 44, 108, 0.12) 54%,
-    transparent 70%
-  );
-  animation-name: nyraCloudWashFloatViolet;
-  animation-duration: 18s;
-  animation-delay: -5.5s;
-}
-
-.nyra-landing-hero-wash-blob--champagne {
-  width: min(115vw, 1200px);
-  height: min(95vw, 1000px);
-  left: 18%;
-  bottom: -42%;
-  border-radius: 52%;
-  filter: blur(200px);
-  background: radial-gradient(
-    closest-side,
-    rgba(210, 160, 120, 0.34) 0%,
-    rgba(185, 138, 108, 0.22) 36%,
-    rgba(120, 88, 72, 0.1) 56%,
-    transparent 72%
-  );
-  animation-name: nyraCloudWashFloatChampagne;
-  animation-duration: 20s;
-  animation-delay: -3.2s;
-}
-
-.nyra-landing-hero-wash-blob--accent {
-  width: min(100vw, 960px);
-  height: min(85vw, 880px);
-  left: 22%;
-  top: -34%;
-  filter: blur(150px);
-  background: radial-gradient(
-    closest-side,
-    color-mix(in srgb, var(--nyra-accent) 48%, transparent) 0%,
-    color-mix(in srgb, var(--nyra-accent) 22%, transparent) 40%,
-    color-mix(in srgb, var(--nyra-accent) 8%, transparent) 58%,
-    transparent 72%
-  );
-  animation-name: nyraCloudWashFloatAccent;
-  animation-duration: 14s;
-  animation-delay: -1.4s;
-}
-
-/** Slow diagonal gradient wash across the full hero (ties motion together). */
-.nyra-landing-hero-atmosphere__sheen {
-  position: absolute;
-  inset: -12% -42%;
-  pointer-events: none;
-  z-index: 2;
-  mix-blend-mode: soft-light;
-  opacity: 0.42;
-  background: linear-gradient(
-    108deg,
-    transparent 0%,
-    rgba(22, 18, 30, 0.42) 18%,
-    rgba(36, 28, 48, 0.32) 38%,
-    rgba(28, 24, 42, 0.36) 52%,
-    rgba(38, 30, 52, 0.3) 72%,
-    rgba(20, 17, 28, 0.4) 86%,
-    transparent 100%
-  );
-  will-change: transform, opacity;
-  animation: nyraHeroAtmosphereSheen 12s ease-in-out infinite alternate;
-}
-
-/** Static depth veil (no animation); keeps the hero readable. */
-.nyra-landing-hero-atmosphere__wash-veil {
-  position: absolute;
-  inset: -28% -18% -8%;
-  z-index: 3;
-  pointer-events: none;
+  z-index: 1;
   background: linear-gradient(
     to bottom,
-    rgba(18, 14, 22, 0.42) 0%,
-    rgba(12, 10, 16, 0.12) 38%,
-    transparent 58%
+    rgba(0, 0, 0, 0.3),
+    rgba(0, 0, 0, 0.6)
   );
-  opacity: 1;
-}
-
-/** Large blurred blooms: screen blend reads as light on the dark hero base. */
-.nyra-landing-hero-atmosphere__blooms {
-  position: absolute;
-  inset: -12% -8% -18%;
-  z-index: 1;
-  mix-blend-mode: screen;
-  opacity: 1;
-}
-
-.nyra-landing-hero-orb {
-  position: absolute;
-  border-radius: 50%;
-  will-change: transform, opacity;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  animation-direction: alternate;
-}
-
-.nyra-landing-hero-orb--rose {
-  width: min(105vw, 1180px);
-  height: min(105vw, 1180px);
-  left: -22%;
-  top: -34%;
-  filter: blur(160px);
-  background: radial-gradient(
-    closest-side,
-    rgba(190, 120, 150, 0.62) 0%,
-    rgba(165, 98, 128, 0.38) 36%,
-    rgba(110, 68, 92, 0.16) 56%,
-    transparent 72%
-  );
-  animation-name: nyraCloudFloat1;
-  animation-duration: 6s;
-  animation-delay: -1.2s;
-}
-
-.nyra-landing-hero-orb--violet {
-  width: min(102vw, 1120px);
-  height: min(102vw, 1120px);
-  right: -24%;
-  top: 0%;
-  filter: blur(180px);
-  background: radial-gradient(
-    closest-side,
-    rgba(110, 90, 190, 0.52) 0%,
-    rgba(88, 74, 158, 0.32) 38%,
-    rgba(52, 46, 108, 0.14) 58%,
-    transparent 74%
-  );
-  animation-name: nyraCloudFloat2;
-  animation-duration: 8s;
-  animation-delay: -4.5s;
-}
-
-.nyra-landing-hero-orb--champagne {
-  width: min(98vw, 1050px);
-  height: min(98vw, 1050px);
-  left: 4%;
-  bottom: -40%;
-  filter: blur(200px);
-  background: radial-gradient(
-    closest-side,
-    rgba(210, 160, 120, 0.38) 0%,
-    rgba(188, 142, 112, 0.26) 34%,
-    rgba(120, 92, 76, 0.14) 56%,
-    transparent 76%
-  );
-  animation-name: nyraCloudFloat3;
-  animation-duration: 10s;
-  animation-delay: -2.8s;
 }
 
 .nyra-landing-hero-fade-up {
@@ -1342,97 +974,61 @@ body {
   animation-name: nyraHeroRevealWordmark;
 }
 
-/** Landing hero composer: soft “light source” + lift on hover/focus. */
+/** Landing hero composer: stationary surface; no lift / ambient slab behind the field. */
 .nyra-landing-composer-host {
   position: relative;
   isolation: isolate;
   border-radius: 1.75rem;
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.nyra-landing-composer-host::before {
-  content: "";
-  position: absolute;
-  inset: -22px -18px -14px;
-  border-radius: 2rem;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      75% 95% at 50% 115%,
-      color-mix(in srgb, var(--nyra-accent) 55%, transparent) 0%,
-      rgba(130, 88, 175, 0.35) 42%,
-      transparent 62%
-    ),
-    radial-gradient(
-      55% 70% at 12% 30%,
-      rgba(200, 130, 160, 0.28) 0%,
-      transparent 55%
-    ),
-    radial-gradient(
-      50% 65% at 92% 25%,
-      rgba(140, 110, 200, 0.26) 0%,
-      transparent 52%
-    );
-  opacity: 0.88;
-  filter: blur(28px);
-  animation: nyraComposerGlow 16s ease-in-out infinite alternate;
+/** Hero-only: disable ambient pink backing (was visible as a slab when the field lifted). */
+.nyra-landing-hero-section .nyra-landing-composer-host::before {
+  content: none;
 }
 
-/** Gradient ring: “active energy” frame around the composer (landing hero only). */
-.nyra-chat-shell .nyra-landing-composer-ring {
+/** Hero composer ring: layout wrapper only — border/fill come from `.nyra-landing-glass-header` (matches How it works header tile). */
+.nyra-landing-hero-section .nyra-landing-composer-ring {
   position: relative;
   z-index: 1;
   border-radius: 1.75rem;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    rgba(210, 145, 168, 0.92) 0%,
-    rgba(165, 118, 155, 0.88) 34%,
-    rgba(130, 95, 175, 0.85) 68%,
-    rgba(175, 140, 195, 0.78) 100%
-  );
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
-    0 0 48px -8px color-mix(in srgb, var(--nyra-accent) 38%, transparent),
-    0 0 80px -12px rgba(120, 85, 165, 0.45),
-    0 22px 56px -24px rgba(0, 0, 0, 0.65);
-  transition: box-shadow 0.4s ease;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-.nyra-chat-shell .nyra-landing-composer-host:hover .nyra-landing-composer-ring,
-.nyra-chat-shell .nyra-landing-composer-host:focus-within .nyra-landing-composer-ring {
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
-    0 0 56px -6px color-mix(in srgb, var(--nyra-accent) 48%, transparent),
-    0 0 96px -10px rgba(130, 92, 185, 0.55),
-    0 24px 60px -22px rgba(0, 0, 0, 0.55);
-}
-
-.nyra-chat-shell .nyra-landing-composer {
+/**
+ * Hero composer: same layered glass as section header tiles (`nyra-landing-glass-header`); no lift.
+ * Interaction is border-led (subtle hover brighten; focus adds brand-tinted edge + soft glow); background stays the default glass.
+ */
+.nyra-landing-hero-section .nyra-landing-glass-header.nyra-landing-composer {
   position: relative;
   z-index: 1;
-  border-color: transparent;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
-    0 1px 0 rgba(255, 255, 255, 0.07) inset,
-    0 14px 40px -18px rgba(0, 0, 0, 0.55);
   transition:
-    background-color 0.35s ease,
-    box-shadow 0.35s ease,
-    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    border-color 0.22s ease,
+    box-shadow 0.28s ease;
 }
 
-.nyra-chat-shell .nyra-landing-composer:hover,
-.nyra-chat-shell .nyra-landing-composer:focus-within {
+.nyra-landing-hero-section .nyra-landing-glass-header.nyra-landing-composer:hover {
+  transform: none;
+  background: rgba(20, 20, 25, 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(255, 255, 255, 0.095);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
-    0 1px 0 rgba(255, 255, 255, 0.09) inset,
-    0 18px 48px -18px rgba(0, 0, 0, 0.5);
+    0 10px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-.nyra-chat-shell .nyra-landing-composer:focus-within {
-  background-color: #363636;
+.nyra-landing-hero-section .nyra-landing-glass-header.nyra-landing-composer:focus-within {
+  transform: none;
+  background: rgba(20, 20, 25, 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: color-mix(in srgb, var(--nyra-accent) 38%, rgba(255, 255, 255, 0.12));
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.065),
+    0 0 34px -8px color-mix(in srgb, var(--nyra-accent) 24%, transparent);
 }
 
 .nyra-landing-hero-send {
@@ -1486,62 +1082,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nyra-landing-hero-atmosphere {
-    animation: none;
-    opacity: 1;
-    mask-image: none;
-  }
-
-  .nyra-landing-hero-wash-blob {
-    animation: none;
-    transform: none;
-  }
-
-  .nyra-landing-hero-wash-blob--rose {
-    opacity: 0.78;
-  }
-
-  .nyra-landing-hero-wash-blob--violet {
-    opacity: 0.76;
-  }
-
-  .nyra-landing-hero-wash-blob--champagne {
-    opacity: 0.72;
-  }
-
-  .nyra-landing-hero-wash-blob--accent {
-    opacity: 0.66;
-  }
-
-  .nyra-landing-hero-atmosphere__sheen {
-    animation: none;
-    transform: none;
-    opacity: 0.42;
-  }
-
-  .nyra-landing-hero-orb {
-    animation: none;
-    transform: none;
-  }
-
-  .nyra-landing-hero-orb--rose {
-    opacity: 0.4;
-  }
-
-  .nyra-landing-hero-orb--violet {
-    opacity: 0.38;
-  }
-
-  .nyra-landing-hero-orb--champagne {
-    opacity: 0.36;
-  }
-
-  .nyra-landing-composer-host::before {
-    animation: none;
-    opacity: 0.82;
-    transform: none;
-  }
-
   .nyra-landing-hero-fade-up {
     animation: none;
     opacity: 1;
@@ -1550,10 +1090,6 @@ body {
 
   .nyra-landing-hero-section .nyra-landing-hero-wordmark.nyra-landing-hero-fade-up {
     opacity: 0.95;
-  }
-
-  .nyra-chat-shell .nyra-landing-composer-host {
-    transform: none !important;
   }
 
   .nyra-landing-hero-send:hover:not(:disabled),
@@ -1573,13 +1109,6 @@ body {
     opacity: 1;
     transform: none;
     box-shadow: none;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .nyra-landing-composer-host:hover,
-  .nyra-landing-composer-host:focus-within {
-    transform: translate3d(0, -1px, 0);
   }
 }
 

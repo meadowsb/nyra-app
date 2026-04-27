@@ -489,7 +489,6 @@ export function SelectedVenuesSidebar({
             <VenueReportCtaPanel
               variant="rail"
               selectedCount={selectedVenueIds.length}
-              railVenueWorkSummaryLine={railVenueWorkSummaryLine}
               venueSelectionHint={venueSelectionHint}
               onVenueReportCta={onVenueReportCta}
               ctaProminence={ctaProminence}

@@ -2,7 +2,8 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
-import type { OutreachItem, OutreachItemStatus } from "@/components/SelectedVenuesSidebar";
+import type { OutreachItem, OutreachItemStatus } from "@/components/SelectedVendorsSidebar";
+import { moduleEntityLabels, type ModuleType } from "@/lib/modules";
 
 type OutreachConfirmVenueRow = { id: string; name: string };
 
@@ -163,6 +164,7 @@ function BriefStructuredSummary({
 }
 
 type OutreachConfirmPanelProps = {
+  moduleType?: ModuleType;
   open: boolean;
   phase?: OutreachConfirmPhase;
   /** Snapshot order + labels while sending (after confirm). */
@@ -308,6 +310,7 @@ function ProgressStatusIcon({
 }
 
 export function OutreachConfirmPanel({
+  moduleType = "venue",
   open,
   phase = "review",
   progressVenues = null,
@@ -326,6 +329,7 @@ export function OutreachConfirmPanel({
   onStopOutreach,
   onStart,
 }: OutreachConfirmPanelProps) {
+  const m = moduleEntityLabels(moduleType);
   const titleId = useId();
   const summaryId = useId();
   const noteFieldId = useId();
@@ -357,7 +361,7 @@ export function OutreachConfirmPanel({
 
   const outreachByVenueId = useMemo(() => {
     const m = new Map<string, OutreachItem>();
-    for (const row of outreachItems) m.set(row.venueId, row);
+    for (const row of outreachItems) m.set(row.vendorId, row);
     return m;
   }, [outreachItems]);
 
@@ -562,7 +566,7 @@ export function OutreachConfirmPanel({
                               Complete required fields to continue
                             </p>
                             <p className="mt-1.5 text-[12px] leading-relaxed text-chat-text-secondary">
-                              Without these, venues cannot quote meaningfully or hold dates.
+                              {`Without these, ${m.listNoun} cannot quote meaningfully or hold dates.`}
                             </p>
                             <button
                               type="button"
@@ -677,7 +681,13 @@ export function OutreachConfirmPanel({
                               value={committedStructured.additionalContext}
                               onChange={(e) => updateBrief({ additionalContext: e.target.value })}
                               rows={3}
-                              placeholder="Style, timing, accessibility, anything venues should know…"
+                              placeholder={
+                                m.isCatering
+                                  ? "Cuisine, service style, timing, anything caterers should know…"
+                                  : moduleType === "photography"
+                                    ? "Style, hours, deliverables, anything photographers should know…"
+                                    : "Style, timing, accessibility, anything venues should know…"
+                              }
                               className={noteTextareaClass}
                             />
                           </div>
@@ -690,9 +700,12 @@ export function OutreachConfirmPanel({
 
               <div className="mt-6">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-chat-text-muted">
-                  Venues
+                  {m.listNounTitle}
                 </p>
-                <ul className="mt-2 flex list-none flex-col gap-1.5 p-0" aria-label="Venues for this outreach">
+                <ul
+                  className="mt-2 flex list-none flex-col gap-1.5 p-0"
+                  aria-label={`${m.listNounTitle} for this outreach`}
+                >
                   {venues.map((row) => {
                     const included = !excludedSet.has(row.id);
                     return (
@@ -738,7 +751,10 @@ export function OutreachConfirmPanel({
 
               <div className="mt-6">
                 <label htmlFor={noteFieldId} className={fieldLabelClass}>
-                  Note to venues <span className="font-normal normal-case tracking-normal text-chat-text-muted">(optional)</span>
+                  {`Note to ${m.listNoun} `}
+                  <span className="font-normal normal-case tracking-normal text-chat-text-muted">
+                    (optional)
+                  </span>
                 </label>
                 <textarea
                   id={noteFieldId}
@@ -759,7 +775,7 @@ export function OutreachConfirmPanel({
                 id={titleId}
                 className="mt-2.5 text-lg font-semibold leading-[1.2] tracking-[-0.03em] text-chat-text-primary"
               >
-                Contacting venues…
+                {`Contacting ${m.listNoun}…`}
               </h2>
               <p
                 id={progressSubtitleId}
@@ -807,9 +823,7 @@ export function OutreachConfirmPanel({
                 id={successBodyId}
                 className="mt-2 text-[13px] leading-relaxed text-chat-text-secondary"
               >
-                {
-                  "We've contacted your selected venues. You'll see replies here as they come in."
-                }
+                {`We've contacted your selected ${m.listNoun}. You'll see replies here as they come in.`}
               </p>
             </div>
           ) : null}

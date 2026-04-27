@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { usePrefersReducedMotion } from "@/components/AssistantStreamedText";
 
-export type Venue = {
+export type Vendor = {
   id: string;
   name: string;
   location: string;
@@ -17,7 +17,14 @@ export type Venue = {
   capacity: string;
   whyFit: string;
   heroImage: string;
+  /**
+   * Optional second row labels under the highlights. Defaults to Setting / Budget / Guest count (venue).
+   */
+  metaRowLabels?: readonly [string, string, string];
 };
+
+/** @deprecated use `Vendor`; UI copy still says “venue”. */
+export type Venue = Vendor;
 
 function CheckStrokeIcon({ className }: { className?: string }) {
   return (
@@ -76,7 +83,7 @@ function MetaCell({ label, value }: { label: string; value: string }) {
 }
 
 type VenueCardProps = {
-  venue: Venue;
+  vendor: Vendor;
   selected: boolean;
   /** True only when this venue’s outreach row is `contacted` or `replied` (main card ignores queue). */
   inquirySent?: boolean;
@@ -92,7 +99,7 @@ type VenueCardProps = {
 const easePremium = "ease-[cubic-bezier(0.22,1,0.36,1)]";
 
 export function VenueCard({
-  venue,
+  vendor,
   selected,
   inquirySent = false,
   inquirySentLabel = "Inquiry sent",
@@ -100,7 +107,7 @@ export function VenueCard({
   onToggle,
   onRemoveFromShortlist,
 }: VenueCardProps) {
-  const heroSrc = venue.heroImage;
+  const heroSrc = vendor.heroImage;
   const reduceMotion = usePrefersReducedMotion();
   const prevSelectedRef = useRef<boolean | null>(null);
   const [shortlistAddGlow, setShortlistAddGlow] = useState(false);
@@ -134,7 +141,8 @@ export function VenueCard({
   const showSelectedCheck = selected && !inquirySent;
   const lockedFooterText = inquirySent ? inquirySentLabel : "";
 
-  const rationaleTitle = `${venue.vibe}\n\n${venue.whyFit}`;
+  const rationaleTitle = `${vendor.vibe}\n\n${vendor.whyFit}`;
+  const metaLabels = vendor.metaRowLabels ?? (["Setting", "Budget", "Guest count"] as const);
 
   return (
     <div
@@ -161,7 +169,7 @@ export function VenueCard({
         <div className="relative aspect-[2/1] w-full overflow-hidden rounded-md bg-gradient-to-br from-neutral-800 via-neutral-900 to-neutral-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] ring-1 ring-white/[0.06] sm:rounded-md">
           <Image
             src={heroSrc}
-            alt={venue.name}
+            alt={vendor.name}
             fill
             sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, min(420px, 34vw)"
             quality={90}
@@ -183,30 +191,30 @@ export function VenueCard({
 
       <div className="flex flex-col px-3 pb-2 pt-2 sm:px-3.5 sm:pb-2.5 sm:pt-2">
         <header className="min-w-0 text-left">
-          <p className="nyra-eyebrow mb-0.5 text-[8px] tracking-[0.16em]">{venue.tag}</p>
+          <p className="nyra-eyebrow mb-0.5 text-[8px] tracking-[0.16em]">{vendor.tag}</p>
           <h3
             className="line-clamp-2 text-[0.9375rem] font-medium leading-[1.14] tracking-[-0.028em] text-chat-text-primary sm:text-[1rem] sm:leading-[1.12]"
-            title={venue.name}
+            title={vendor.name}
           >
-            {venue.name}
+            {vendor.name}
           </h3>
         </header>
 
-        <EditorialHighlights highlights={venue.highlights} selected={showSelectedChrome} />
+        <EditorialHighlights highlights={vendor.highlights} selected={showSelectedChrome} />
 
         <div
           className={`mt-2 grid grid-cols-1 gap-1.5 border-t border-chat-border pt-2 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-chat-border`}
         >
-          <MetaCell label="Setting" value={venue.location} />
-          <MetaCell label="Budget" value={venue.price} />
-          <MetaCell label="Guest count" value={venue.capacity} />
+          <MetaCell label={metaLabels[0]} value={vendor.location} />
+          <MetaCell label={metaLabels[1]} value={vendor.price} />
+          <MetaCell label={metaLabels[2]} value={vendor.capacity} />
         </div>
 
         <p
           className="mt-1.5 line-clamp-2 text-[10px] font-normal leading-snug tracking-[-0.01em] text-chat-text-secondary"
           title={rationaleTitle}
         >
-          {venue.vibe} <span className="text-chat-text-muted">·</span> {venue.whyFit}
+          {vendor.vibe} <span className="text-chat-text-muted">·</span> {vendor.whyFit}
         </p>
 
         {inquirySent ? (
@@ -256,7 +264,7 @@ export function VenueCard({
             {selected && onRemoveFromShortlist ? (
               <button
                 type="button"
-                aria-label={`Remove ${venue.name} from shortlist`}
+                aria-label={`Remove ${vendor.name} from shortlist`}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();

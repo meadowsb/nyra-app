@@ -6,14 +6,15 @@ import {
 } from "@/components/AssistantStreamedText";
 import { ThinkingBubble } from "@/components/ThinkingBubble";
 import {
-  venueAllowsMainCardRemoval,
-  venueIdsReadyToContact,
-  venueOutreachRowIsPostInquiry,
+  vendorAllowsMainCardRemoval,
+  vendorIdsReadyToContact,
+  vendorOutreachRowIsPostInquiry,
   type OutreachItem,
-} from "@/components/SelectedVenuesSidebar";
-import type { Venue } from "@/components/VenueCard";
+} from "@/components/SelectedVendorsSidebar";
+import type { Vendor } from "@/components/VenueCard";
 import { VenueCard } from "@/components/VenueCard";
 import { VenueReportCtaPanel } from "@/components/VenueReportCtaPanel";
+import { defaultModuleForType, resultPackLeadIn, type ModuleType } from "@/lib/modules";
 
 export type Message =
   | { id: string; role: "user"; text: string }
@@ -21,8 +22,10 @@ export type Message =
       id: string;
       role: "assistant";
       text: string;
-      venues?: Venue[];
+      vendors?: Vendor[];
       isThinking?: boolean;
+      /** Module the shortlist + mock cards in this turn belong to. */
+      resultModuleType?: ModuleType;
     };
 
 type UserMessage = Extract<Message, { role: "user" }>;
@@ -33,15 +36,17 @@ type ChatTurn =
   | { id: string; user: null; assistant: AssistantMessage };
 
 type ChatMessagesProps = {
+  moduleType?: ModuleType;
   messages: Message[];
   latestMessageRef: RefObject<HTMLDivElement | null>;
   thinkingBubbleRef: RefObject<HTMLDivElement | null>;
   latestAssistantMessageRef: RefObject<HTMLDivElement | null>;
   latestAssistantResultRef: RefObject<HTMLDivElement | null>;
-  selectedVenueIds: string[];
+  selectedVendorIds: string[];
+  getSelectedIdsForModule: (moduleType: ModuleType) => string[];
   pulseVenueCards: boolean;
-  onToggleVenue: (id: string) => void;
-  onRemoveVenueFromShortlist: (id: string) => void;
+  onToggleVenue: (id: string, resultModule: ModuleType) => void;
+  onRemoveVenueFromShortlist: (id: string, resultModule: ModuleType) => void;
   venueSelectionHint: string | null;
   onVenueReportCta: () => void;
   /** When true, Send is primary; mobile Contact stays secondary until composer is empty. */
@@ -55,22 +60,45 @@ type ChatMessagesProps = {
   isTextComplete: boolean;
   /** After “Contact venues”, rail / CTAs use pipeline state; main venue cards use only shortlisted vs inquiry-sent ids. */
   outreachMode: boolean;
-  /** Live pipeline rows per shortlisted venue (`contacted` / `replied` lock the main card). */
+  /** Full pipeline; used to resolve each card’s inquiry state by (module, vendor) in thread history. */
   outreachItems: OutreachItem[];
-  /** When set to a post-inquiry venue, hide the mobile thread “Contact” strip (rail footer handles context). */
-  plannerDetailVenueId?: string | null;
+  /** Rows for the **active** module (footer counts / queue); omit duplicate-module pipeline noise. */
+  pipelineOutreachItems: OutreachItem[];
+  /**
+   * When set to a post-inquiry vendor, hide the mobile thread “Contact” strip
+   * (rail footer handles context). Module-scoped for correct pipeline match.
+   */
+  plannerRef?: { moduleId: string; vendorId: string } | null;
   onAssistantStreamStart?: () => void;
   onAssistantStreamProgress?: () => void;
   onAssistantStreamComplete?: () => void;
+  /** Fills the composer and sends; used for the initial empty-state example prompts. */
+  onSelectExamplePrompt?: (text: string) => void;
 };
 
+const EXAMPLE_PROMPTS = [
+  "Planning a wedding in Miami for 80 guests",
+  "Looking for a venue in Tampa",
+  "Need catering for 100 guests",
+  "Find a photographer in Miami",
+] as const;
+
+function resolveModuleTypeForMessage(
+  message: { resultModuleType?: ModuleType | undefined },
+  moduleType: ModuleType | undefined
+): ModuleType {
+  return message.resultModuleType ?? moduleType ?? "venue";
+}
+
 export function ChatMessages({
+  moduleType,
   messages,
   latestMessageRef,
   thinkingBubbleRef,
   latestAssistantMessageRef,
   latestAssistantResultRef,
-  selectedVenueIds,
+  selectedVendorIds,
+  getSelectedIdsForModule,
   pulseVenueCards,
   onToggleVenue,
   onRemoveVenueFromShortlist,
@@ -85,10 +113,12 @@ export function ChatMessages({
   isTextComplete,
   outreachMode,
   outreachItems,
-  plannerDetailVenueId = null,
+  pipelineOutreachItems,
+  plannerRef = null,
   onAssistantStreamStart,
   onAssistantStreamProgress,
   onAssistantStreamComplete,
+  onSelectExamplePrompt,
 }: ChatMessagesProps) {
   /** Shrink-wrap on the right so short user lines read as bubbles, not full-width blocks. */
   const userMessageCol =
@@ -103,29 +133,20 @@ export function ChatMessages({
   const prefersReducedMotion = usePrefersReducedMotion();
 
   const pendingAdditionalOutreachCount = useMemo(
-    () => venueIdsReadyToContact(outreachMode, selectedVenueIds, outreachItems).length,
-    [outreachMode, selectedVenueIds, outreachItems]
+    () => vendorIdsReadyToContact(outreachMode, selectedVendorIds, pipelineOutreachItems).length,
+    [outreachMode, selectedVendorIds, pipelineOutreachItems]
   );
 
-  const outreachByVenueId = useMemo(() => {
-    const map = new Map<string, OutreachItem>();
-    for (const item of outreachItems) map.set(item.venueId, item);
-    return map;
-  }, [outreachItems]);
+  const outreachRow = (resultModule: ModuleType, vendorId: string) => {
+    const mid = defaultModuleForType(resultModule).moduleId;
+    return outreachItems.find(
+      (item) => item.moduleId === mid && item.vendorId === vendorId
+    );
+  };
 
-  const inquirySentVenueIds = useMemo(
-    () =>
-      outreachItems
-        .filter(
-          (item) => item.status === "contacted" || item.status === "replied"
-        )
-        .map((item) => item.venueId),
-    [outreachItems]
-  );
-
-  const suppressMobileVenueReportCta = venueOutreachRowIsPostInquiry(
-    plannerDetailVenueId,
-    outreachMode,
+  const suppressMobileVenueReportCta = vendorOutreachRowIsPostInquiry(
+    plannerRef?.moduleId ?? null,
+    plannerRef?.vendorId ?? null,
     outreachItems
   );
 
@@ -195,7 +216,9 @@ export function ChatMessages({
     isLastInThread: boolean,
     showVenueResults: boolean
   ) => {
-    if (!message.venues?.length || !showVenueResults) return null;
+    if (!message.vendors?.length || !showVenueResults) return null;
+
+    const resultModuleM = resolveModuleTypeForMessage(message, moduleType);
 
     return (
       <div
@@ -208,21 +231,23 @@ export function ChatMessages({
           }`}
         >
             <p className="text-left text-[11.5px] font-medium leading-snug tracking-[-0.01em] text-chat-text-secondary sm:text-[12px]">
-            These are the strongest matches based on your brief:
+            {resultPackLeadIn(resultModuleM)}
           </p>
           <div className="nyra-venues-grid grid items-start gap-1.5 sm:grid-cols-2 sm:gap-1.5 lg:grid-cols-3 lg:gap-1.5">
-            {message.venues.map((venue, venueIndex) => {
-              const isSelected = selectedVenueIds.includes(venue.id);
-              const isInquirySent = inquirySentVenueIds.includes(venue.id);
-              const row = outreachByVenueId.get(venue.id);
-              const canRemoveFromCard = venueAllowsMainCardRemoval(
+            {message.vendors.map((v, venueIndex) => {
+              const forModuleIds = getSelectedIdsForModule(resultModuleM);
+              const isSelected = forModuleIds.includes(v.id);
+              const row = outreachRow(resultModuleM, v.id);
+              const isInquirySent =
+                row?.status === "contacted" || row?.status === "replied";
+              const canRemoveFromCard = vendorAllowsMainCardRemoval(
                 isSelected,
                 isInquirySent
               );
 
               return (
                 <div
-                  key={venue.id}
+                  key={v.id}
                   className={
                     prefersReducedMotion
                       ? undefined
@@ -230,17 +255,17 @@ export function ChatMessages({
                   }
                 >
                   <VenueCard
-                    venue={venue}
+                    vendor={v}
                     selected={isSelected}
                     inquirySent={isInquirySent}
                     inquirySentLabel={
                       row?.status === "replied" ? "Responded" : "Inquiry sent"
                     }
                     pulse={pulseVenueCards}
-                    onToggle={() => onToggleVenue(venue.id)}
+                    onToggle={() => onToggleVenue(v.id, resultModuleM)}
                     onRemoveFromShortlist={
                       canRemoveFromCard
-                        ? () => onRemoveVenueFromShortlist(venue.id)
+                        ? () => onRemoveVenueFromShortlist(v.id, resultModuleM)
                         : undefined
                     }
                   />
@@ -251,7 +276,8 @@ export function ChatMessages({
           {isLastInThread && !suppressMobileVenueReportCta ? (
             <div className="pt-3 lg:hidden">
               <VenueReportCtaPanel
-                selectedCount={selectedVenueIds.length}
+                moduleType={resultModuleM}
+                selectedCount={selectedVendorIds.length}
                 venueSelectionHint={venueSelectionHint}
                 onVenueReportCta={onVenueReportCta}
                 outreachActive={outreachMode}
@@ -261,7 +287,7 @@ export function ChatMessages({
                     ? "primary"
                     : outreachMode ||
                         composerHasText ||
-                        selectedVenueIds.length === 0
+                        selectedVendorIds.length === 0
                       ? "secondary"
                       : "primary"
                 }
@@ -280,8 +306,8 @@ export function ChatMessages({
   ) => {
     const offsetFromUser = options?.offsetFromUser === true;
     const showVenueResults =
-      !!message.venues?.length && (!isLastInThread || isTextComplete);
-    const assistantHasVenues = !!message.venues?.length;
+      !!message.vendors?.length && (!isLastInThread || isTextComplete);
+    const assistantHasVenues = !!message.vendors?.length;
 
     const attachLatestAssistantMessageRef =
       isLastInThread &&
@@ -416,6 +442,43 @@ export function ChatMessages({
       </section>
     );
   };
+
+  if (messages.length === 0) {
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-8 [scroll-padding-block-end:1.25rem] sm:px-6 sm:py-10 sm:pb-10">
+        <div className="mx-auto flex min-h-[min(100%,28rem)] w-full max-w-[32rem] flex-col items-center justify-center text-center">
+          <h2 className="text-balance text-[1.25rem] font-semibold leading-snug tracking-[-0.02em] text-chat-text-primary sm:text-[1.35rem]">
+            Tell me what you need help with
+          </h2>
+          <p className="mt-3 max-w-md text-pretty text-[15px] leading-relaxed text-chat-text-secondary sm:text-[15.5px]">
+            Planning your wedding, finding vendors, or comparing options — I&rsquo;ll help you
+            figure it out.
+          </p>
+          {onSelectExamplePrompt ? (
+            <ul className="mt-8 w-full max-w-md space-y-0 text-left text-[15px] leading-relaxed sm:mt-9">
+              {EXAMPLE_PROMPTS.map((prompt) => (
+                <li key={prompt} className="flex gap-0">
+                  <span
+                    className="shrink-0 pr-1.5 text-chat-text-secondary select-none"
+                    aria-hidden
+                  >
+                    &bull;
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onSelectExamplePrompt(prompt)}
+                    className="shrink-0 min-w-0 text-left text-[15px] leading-relaxed text-chat-text-primary underline-offset-[3px] transition-colors hover:underline"
+                  >
+                    {prompt}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-0 pt-2 pb-8 [scroll-padding-block-end:1.25rem] sm:pt-3 sm:pb-10">

@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nyra — Wedding venue discovery without the back-and-forth",
+  title: "Nyra — Your AI wedding planner",
   description:
-    "Nyra finds, shortlists, and contacts venues for pricing and availability—so you can plan with clarity.",
+    "Nyra helps you plan everything — venues, vendors, timelines, and decisions — all in one place.",
 };
 
 export default function RootLayout({

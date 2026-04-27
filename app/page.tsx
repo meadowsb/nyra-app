@@ -2,13 +2,14 @@ import type { ReactNode } from "react";
 
 import { LandingHowItWorksSection } from "@/components/LandingHowItWorksSection";
 import { LandingScrollScrubbedExampleChat } from "@/components/LandingScrollScrubbedExampleChat";
-import { LandingHeroQueryInput } from "@/components/LandingHeroQueryInput";
+import { LandingHeroBackgroundMedia } from "@/components/LandingHeroBackgroundMedia";
+import { LandingHeroWaitlistGate } from "@/components/LandingHeroWaitlistGate";
 import { LandingRevealOnView } from "@/components/LandingRevealOnView";
 import { LandingScrollVenueBackdrop } from "@/components/LandingScrollVenueBackdrop";
 
 const trustStatements = [
   "Designed for couples planning real events",
-  "Skip hours of venue outreach",
+  "Skip hours of back-and-forth",
   "Short write-ups you can skim between everything else",
 ] as const;
 
@@ -44,41 +45,21 @@ export default function Home() {
       <main className="nyra-landing-main">
         {/* Hero */}
         <section className="nyra-landing-hero-section relative flex flex-col justify-center overflow-hidden border-b border-chat-border">
-          <div className="nyra-landing-hero-base" aria-hidden />
-          <div className="nyra-landing-hero-atmosphere" aria-hidden>
-            <div className="nyra-landing-hero-atmosphere__washes">
-              <div className="nyra-landing-hero-wash-blob nyra-landing-hero-wash-blob--rose" />
-              <div className="nyra-landing-hero-wash-blob nyra-landing-hero-wash-blob--violet" />
-              <div className="nyra-landing-hero-wash-blob nyra-landing-hero-wash-blob--champagne" />
-              <div className="nyra-landing-hero-wash-blob nyra-landing-hero-wash-blob--accent" />
-            </div>
-            <div className="nyra-landing-hero-atmosphere__blooms">
-              <div className="nyra-landing-hero-orb nyra-landing-hero-orb--rose" />
-              <div className="nyra-landing-hero-orb nyra-landing-hero-orb--violet" />
-              <div className="nyra-landing-hero-orb nyra-landing-hero-orb--champagne" />
-            </div>
-            <div className="nyra-landing-hero-atmosphere__sheen" />
-            <div className="nyra-landing-hero-atmosphere__wash-veil" />
-          </div>
+          <LandingHeroBackgroundMedia />
           <div className="relative z-10 mx-auto w-full max-w-[1200px] px-2 py-16 sm:px-3 sm:py-20 lg:py-24">
             <SectionLabel className="nyra-landing-hero-wordmark nyra-landing-hero-fade-up nyra-landing-hero-fade-up--delay-1 text-center">
               Nyra
             </SectionLabel>
             <h1 className="nyra-landing-hero-fade-up nyra-landing-hero-fade-up--delay-2 mx-auto mt-5 max-w-[46rem] text-center text-[clamp(1.875rem,4.2vw,2.875rem)] font-semibold leading-[1.1] tracking-[-0.02em] text-chat-text-primary">
-              Find your wedding venue without the back-and-forth
+              Plan your wedding <br />
+              <span className="whitespace-nowrap">without the chaos</span>
             </h1>
             <p className="nyra-landing-hero-fade-up nyra-landing-hero-fade-up--delay-3 mx-auto mt-5 max-w-[40rem] text-center text-[15px] leading-relaxed text-chat-text-secondary">
-              Nyra finds, shortlists, and contacts venues for pricing and availability—so you can
-              decide with clarity, not chaos.
+              Nyra helps you plan everything — venues, vendors, timelines, and decisions —{" "}
+              {"all\u00A0in\u00A0one\u00A0place"}.
             </p>
 
-            <form
-              action="/chat"
-              method="get"
-              className="nyra-landing-hero-fade-up nyra-landing-hero-fade-up--delay-4 mt-8 flex w-full justify-center px-1 sm:px-0"
-            >
-              <LandingHeroQueryInput id="landing-query" name="query" />
-            </form>
+            <LandingHeroWaitlistGate />
           </div>
         </section>
 
@@ -94,9 +75,9 @@ export default function Home() {
           <LandingRevealOnView className="mx-auto max-w-[1200px] px-2 py-20 sm:px-3 sm:py-24 lg:py-28">
             <header className="nyra-landing-glass-header nyra-landing-section-head-card nyra-landing-reveal-head mx-auto max-w-2xl text-center">
               <SectionLabel>Your results</SectionLabel>
-              <h2 className="nyra-landing-section-headline">Your shortlist, built in seconds</h2>
+              <h2 className="nyra-landing-section-headline">Your wedding, organized in one place</h2>
               <p className="nyra-landing-section-sub mx-auto max-w-md">
-                Real venues, matched to what you asked for
+                All your options, pricing, and next steps — without the chaos of managing it yourself
               </p>
             </header>
 
@@ -183,7 +164,7 @@ export default function Home() {
           <div>
             <p className="text-sm font-semibold tracking-[-0.01em] text-chat-text-primary">Nyra</p>
             <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-chat-text-secondary">
-              Venue discovery and outreach, without the runaround.
+              Your AI wedding planner — from first idea to final decisions
             </p>
           </div>
           <nav aria-label="Footer">

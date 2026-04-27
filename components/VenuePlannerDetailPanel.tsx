@@ -2,8 +2,9 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
-import type { OutreachItemStatus } from "@/components/SelectedVenuesSidebar";
-import type { PlannerTextEntry, VenuePlannerEntry } from "@/components/venuePlannerState";
+import type { OutreachItemStatus } from "@/components/SelectedVendorsSidebar";
+import type { PlannerTextEntry, VendorDetails } from "@/components/vendorPlannerState";
+import { moduleEntityLabels, type ModuleType } from "@/lib/modules";
 
 function CloseIcon({ className }: { className?: string }) {
   return (
@@ -22,11 +23,16 @@ const sectionEyebrow =
   "text-[11px] font-semibold uppercase tracking-[0.16em] text-chat-text-muted";
 
 /** Expanded planner only: label + helper aligned with rail semantics; pipeline uses distinct labels where the rail still says “Shortlisted”. */
-function plannerOutreachStatusPresentation(status: OutreachItemStatus): {
+function plannerOutreachStatusPresentation(
+  status: OutreachItemStatus,
+  s: { listNounSingular: "venue" | "caterer" | "photographer" }
+): {
   label: string;
   helper: string;
   dotClass: string;
 } {
+  const x = s.listNounSingular;
+  const responseFrom = s.listNounSingular;
   switch (status) {
     case "queued":
       return {
@@ -37,19 +43,19 @@ function plannerOutreachStatusPresentation(status: OutreachItemStatus): {
     case "drafting-outreach":
       return {
         label: "Sending",
-        helper: "Nyra is contacting this venue",
+        helper: `Nyra is contacting this ${x}`,
         dotClass: "bg-nyra-accent/55",
       };
     case "contacted":
       return {
         label: "Inquiry sent",
-        helper: "Waiting for venue response.",
+        helper: `Waiting for ${responseFrom} response.`,
         dotClass: "bg-emerald-500/45",
       };
     case "replied":
       return {
         label: "Response received",
-        helper: "Review this venue's reply.",
+        helper: `Review this ${x}'s reply.`,
         dotClass: "bg-sky-400/50",
       };
     default: {
@@ -194,19 +200,28 @@ type OutreachTimeline = {
 
 function outreachTimelineCopy(
   outreachStatus: OutreachItemStatus | null,
-  statusUpdatedAt: number | null
+  statusUpdatedAt: number | null,
+  s: {
+    listNoun: string;
+    listNounTitle: string;
+    listNounSingular: string;
+    contactBatchCta: string;
+    outreachRepliedHeadline: string;
+  }
 ): OutreachTimeline {
   const ts =
     typeof statusUpdatedAt === "number" && Number.isFinite(statusUpdatedAt)
       ? statusUpdatedAt
       : null;
+  const contactCta = s.contactBatchCta;
+  const shortNoun = s.listNoun;
+  const x = s.listNounSingular;
 
   if (outreachStatus == null) {
     return {
       primaryLine: "Ready to contact",
       secondaryLine: "Nyra will reach out to check availability and pricing",
-      nextStep:
-        "Use Contact venues at the bottom of the shortlist. The button shows how many shortlisted venues are included.",
+      nextStep: `Use ${contactCta} at the bottom of the shortlist. The button shows how many shortlisted ${shortNoun} are included.`,
     };
   }
 
@@ -214,26 +229,26 @@ function outreachTimelineCopy(
     case "queued":
       return {
         primaryLine: "Queued to send",
-        secondaryLine: "Nyra will reach out to this venue shortly.",
-        nextStep: "Inquiries send in order with your other shortlisted venues.",
+        secondaryLine: `Nyra will reach out to this ${x} shortly.`,
+        nextStep: `Inquiries send in order with your other shortlisted ${shortNoun}.`,
       };
     case "drafting-outreach":
       return {
         primaryLine: "Sending your inquiry",
-        secondaryLine: "Nyra is contacting this venue now.",
+        secondaryLine: `Nyra is contacting this ${x} now.`,
         nextStep:
           "You will see timing and a message summary here as soon as the inquiry is sent.",
       };
     case "contacted":
       return {
         primaryLine: ts != null ? formatInquirySentRelative(ts) : "Inquiry sent",
-        secondaryLine: "Waiting for venue response",
+        secondaryLine: "Waiting for a reply",
         nextStep: "Nyra will follow up in 48 hours if no reply.",
       };
     case "replied":
       return {
-        primaryLine: "Venue responded",
-        secondaryLine: "Review this venue's reply.",
+        primaryLine: s.outreachRepliedHeadline,
+        secondaryLine: "Review the response in your thread.",
         nextStep:
           "Nyra will keep following up for you. Add a specific question only if you want something extra.",
       };
@@ -349,13 +364,14 @@ function FollowUpEntryList({ entries }: { entries: PlannerTextEntry[] }) {
 }
 
 export type VenuePlannerDetailPanelProps = {
+  moduleType?: ModuleType;
   venueName: string;
   outreachStatus: OutreachItemStatus | null;
   /** When the outreach row last changed status; for “contacted”, drives “Inquiry sent … ago”. */
   statusUpdatedAt?: number | null;
   originalBrief: string;
   whatNyraAsked: string;
-  planner: VenuePlannerEntry;
+  planner: VendorDetails;
   isArchived: boolean;
   onClose: () => void;
   onAddNyraNote: (text: string) => void;
@@ -372,6 +388,7 @@ function isInquirySentOrReplied(status: OutreachItemStatus | null): boolean {
 }
 
 export function VenuePlannerDetailPanel({
+  moduleType = "venue",
   venueName,
   outreachStatus,
   statusUpdatedAt,
@@ -387,6 +404,7 @@ export function VenuePlannerDetailPanel({
   contactThisVenueOnlyVisible = false,
   onContactThisVenueOnly,
 }: VenuePlannerDetailPanelProps) {
+  const m = moduleEntityLabels(moduleType);
   const noteDraftId = useId();
   const followDraftId = useId();
   const followComposerPanelId = useId();
@@ -413,11 +431,11 @@ export function VenuePlannerDetailPanel({
       ? statusUpdatedAt
       : null;
 
-  const timeline = outreachTimelineCopy(outreachStatus, ts);
+  const timeline = outreachTimelineCopy(outreachStatus, ts, m);
 
   const postContactStatusDotClass =
     outreachStatus != null && isInquirySentOrReplied(outreachStatus)
-      ? plannerOutreachStatusPresentation(outreachStatus).dotClass
+      ? plannerOutreachStatusPresentation(outreachStatus, m).dotClass
       : plannerShortlistStatusPresentation().dotClass;
 
   const submitNote = () => {
@@ -462,14 +480,14 @@ export function VenuePlannerDetailPanel({
         }
       : outreachStatus === "drafting-outreach"
         ? {
-            dotClass: plannerOutreachStatusPresentation("drafting-outreach").dotClass,
+            dotClass: plannerOutreachStatusPresentation("drafting-outreach", m).dotClass,
             title: "Sending",
-            subtitle: "Nyra is contacting this venue",
+            subtitle: plannerOutreachStatusPresentation("drafting-outreach", m).helper,
           }
         : {
-            dotClass: plannerOutreachStatusPresentation("queued").dotClass,
-            title: plannerOutreachStatusPresentation("queued").label,
-            subtitle: plannerOutreachStatusPresentation("queued").helper,
+            dotClass: plannerOutreachStatusPresentation("queued", m).dotClass,
+            title: plannerOutreachStatusPresentation("queued", m).label,
+            subtitle: plannerOutreachStatusPresentation("queued", m).helper,
           };
 
   return (
@@ -481,7 +499,7 @@ export function VenuePlannerDetailPanel({
     >
       <header className="flex items-start justify-between gap-4 border-b border-chat-border-muted pb-5">
         <div className="min-w-0 flex-1">
-          <p className="nyra-eyebrow">Venue</p>
+          <p className="nyra-eyebrow">{m.defaultCardName}</p>
           <h2 className="mt-2 text-xl font-semibold leading-tight tracking-[-0.03em] text-chat-text-primary">
             {venueName}
           </h2>
@@ -533,7 +551,7 @@ export function VenuePlannerDetailPanel({
                   onClick={onContactThisVenueOnly}
                   className="mt-3 inline-flex max-w-full self-start rounded-sm border-0 bg-transparent px-0 py-0.5 text-left text-[12px] font-normal leading-snug tracking-[-0.01em] text-chat-text-muted/90 underline decoration-white/[0.12] decoration-1 underline-offset-[0.22em] transition-[color,text-decoration-color] hover:text-chat-text-secondary hover:decoration-white/28 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nyra-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-chat-sidebar"
                 >
-                  Contact only this venue →
+                  {`Contact only this ${m.listNounSingular} →`}
                 </button>
               ) : null}
             </div>
@@ -588,7 +606,7 @@ export function VenuePlannerDetailPanel({
                             </ul>
                           ) : (
                             <p className={`mt-2 text-[12px] leading-snug text-chat-text-muted`}>
-                              A summary of what went to this venue will appear here.
+                              {`A summary of what went to this ${m.listNounSingular} will appear here.`}
                             </p>
                           )
                         ) : (
@@ -604,7 +622,7 @@ export function VenuePlannerDetailPanel({
                             {askedTrim ? (
                               <div>
                                 <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-chat-text-muted">
-                                  {"Nyra's message to the venue"}
+                                  {`Nyra's message to the ${m.listNounSingular}`}
                                 </p>
                                 <p className={`mt-1.5 whitespace-pre-wrap ${proseClass}`}>{whatNyraAsked}</p>
                               </div>
@@ -624,8 +642,8 @@ export function VenuePlannerDetailPanel({
                       </>
                     ) : (
                       <p className={`mt-2 text-[12px] leading-snug text-chat-text-muted`}>
-                        Once the inquiry is sent, a short summary of what went to this venue will appear
-                        here.
+                        {`Once the inquiry is sent, a short summary of what went to this ${m.listNounSingular} will appear
+                        here.`}
                       </p>
                     )
                   ) : (
@@ -645,7 +663,7 @@ export function VenuePlannerDetailPanel({
                   variant="venue"
                   className="border-emerald-400/15 bg-emerald-500/[0.06] text-[9px] text-emerald-100/75"
                 >
-                  Sent to venue
+                  {`Sent to ${m.listNounSingular}`}
                 </SectionClarityBadge>
               </div>
               {planner.followUps.length > 0 ? (
@@ -670,7 +688,7 @@ export function VenuePlannerDetailPanel({
                   Nyra will already follow up automatically. Add something only if you want to.
                 </p>
                 <label htmlFor={followDraftId} className="sr-only">
-                  Optional message for Nyra to send to this venue
+                  {`Optional message for Nyra to send to this ${m.listNounSingular}`}
                 </label>
                 <textarea
                   id={followDraftId}
@@ -697,7 +715,7 @@ export function VenuePlannerDetailPanel({
                 </button>
                 {followUpAck ? (
                   <p className="mt-2 text-[12px] font-medium leading-snug text-emerald-200/90" role="status">
-                    Nyra is following up with this venue
+                    {`Nyra is following up with this ${m.listNounSingular}`}
                   </p>
                 ) : null}
               </div>
@@ -706,7 +724,7 @@ export function VenuePlannerDetailPanel({
             <EntryList
               label="Notes for Nyra"
               entries={planner.nyraNotes}
-              emptyHint="Private context for Nyra only — not sent to venues."
+              emptyHint={`Private context for Nyra only — not sent to ${m.listNoun}.`}
             />
 
             <div className="rounded-xl border border-chat-border-muted/80 bg-white/[0.015] p-4">
@@ -717,7 +735,7 @@ export function VenuePlannerDetailPanel({
                 <SectionClarityBadge variant="private">Private</SectionClarityBadge>
               </div>
               <p className="mt-1.5 text-[12px] leading-snug text-chat-text-muted">
-                Only Nyra will see this. Not sent to the venue.
+                {`Only Nyra will see this. Not sent to the ${m.listNounSingular}.`}
               </p>
               <label htmlFor={noteDraftId} className="sr-only">
                 Internal note for Nyra
@@ -727,7 +745,13 @@ export function VenuePlannerDetailPanel({
                 value={noteDraft}
                 onChange={(e) => setNoteDraft(e.target.value)}
                 rows={3}
-                placeholder="e.g. Prioritize venues with outdoor ceremony options…"
+                placeholder={
+                  m.isCatering
+                    ? "e.g. Emphasize allergy-safe prep and kid-friendly options…"
+                    : moduleType === "photography"
+                      ? "e.g. Prefer documentary coverage and an extra hour for getting ready…"
+                      : "e.g. Prioritize venues with outdoor ceremony options…"
+                }
                 className={inputClassNote}
               />
               <button

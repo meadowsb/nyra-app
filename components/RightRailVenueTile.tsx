@@ -6,10 +6,15 @@ const TILE_SURFACE_NEUTRAL =
 const TILE_SURFACE_ACTIONABLE =
   "rounded-lg border border-white/[0.09] bg-white/[0.052] px-2.5 py-2 leading-snug shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]";
 
+const TYPE_BADGE_CLASS =
+  "inline-flex shrink-0 items-center rounded-md border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-chat-text-muted";
+
 export type RightRailVenueTileProps = {
   name: string;
   statusLabel: string;
   helperText: string;
+  /** When set, renders a compact module chip beside the status (plan canvas rail). */
+  typeBadge?: string;
   /** Tailwind classes for the status indicator dot; omit to hide the dot. */
   statusDotClass?: string | null;
   /** Merged onto the same surface as every other status (e.g. min-w-0 in a flex column). */
@@ -35,6 +40,7 @@ export function RightRailVenueTile({
   name,
   statusLabel,
   helperText,
+  typeBadge,
   statusDotClass,
   className,
   onPress,
@@ -42,7 +48,7 @@ export function RightRailVenueTile({
   isArchived,
   visualTone = "neutral",
 }: RightRailVenueTileProps) {
-  const ariaLabel = [name, statusLabel, helperText].filter(Boolean).join(". ");
+  const ariaLabel = [name, typeBadge, statusLabel, helperText].filter(Boolean).join(". ");
   const baseSurface = visualTone === "actionable" ? TILE_SURFACE_ACTIONABLE : TILE_SURFACE_NEUTRAL;
   const surfaceClass = className ? `${baseSurface} ${className}` : baseSurface;
   const showDot = Boolean(statusDotClass);
@@ -71,12 +77,12 @@ export function RightRailVenueTile({
 
   const secondaryStatusClass = "mt-1 truncate text-[12px] leading-snug text-chat-text-muted";
 
-  const body = (
-    <>
-      <p className={nameClass}>{name}</p>
-      {statusLabel ? (
-        showDot ? (
-          <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
+  const statusRow =
+    statusLabel && typeBadge ? (
+      <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2">
+        <span className={TYPE_BADGE_CLASS}>{typeBadge}</span>
+        {showDot ? (
+          <div className="flex min-w-0 min-h-0 items-center gap-1.5">
             <span
               className={`size-1.5 shrink-0 rounded-full ${statusDotClass}`}
               aria-hidden
@@ -84,10 +90,28 @@ export function RightRailVenueTile({
             <span className={primaryStatusClass}>{statusLabel}</span>
           </div>
         ) : (
-          <p className={`mt-1.5 ${primaryStatusClass}`}>{statusLabel}</p>
-        )
-      ) : null}
-      {helperText ? <p className={secondaryStatusClass}>{helperText}</p> : null}
+          <span className={`min-w-0 ${primaryStatusClass}`}>{statusLabel}</span>
+        )}
+      </div>
+    ) : statusLabel ? (
+      showDot ? (
+        <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
+          <span
+            className={`size-1.5 shrink-0 rounded-full ${statusDotClass}`}
+            aria-hidden
+          />
+          <span className={primaryStatusClass}>{statusLabel}</span>
+        </div>
+      ) : (
+        <p className={`mt-1.5 ${primaryStatusClass}`}>{statusLabel}</p>
+      )
+    ) : null;
+
+  const body = (
+    <>
+      <p className={nameClass}>{name}</p>
+      {statusRow}
+      {!typeBadge && helperText ? <p className={secondaryStatusClass}>{helperText}</p> : null}
     </>
   );
 

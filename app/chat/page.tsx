@@ -1,7 +1,6 @@
 "use client";
 
 import React, {
-  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -9,17 +8,16 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useSearchParams } from "next/navigation";
 
 import { ChatHeader } from "@/components/ChatHeader";
 import { ChatInputBar } from "@/components/ChatInputBar";
 import { ChatMessages, type Message } from "@/components/ChatMessages";
 import {
-  outreachItemsFromVenueIds,
-  SelectedVenuesSidebar,
-  venueIdsPendingOutreachRow,
+  outreachItemsFromVendorIds,
+  SelectedVendorsSidebar,
+  vendorIdsPendingOutreachRow,
   type OutreachItem,
-} from "@/components/SelectedVenuesSidebar";
+} from "@/components/SelectedVendorsSidebar";
 import { usePrefersReducedMotion } from "@/components/AssistantStreamedText";
 import {
   OUTREACH_DEFAULT_INQUIRY_BLURB,
@@ -27,16 +25,23 @@ import {
   type OutreachConfirmPhase,
 } from "@/components/OutreachConfirmPanel";
 import { UpdateAllVenuesModal } from "@/components/UpdateAllVenuesModal";
-import type { Venue } from "@/components/VenueCard";
-import { getVenuePlannerEntry, type VenuePlannerEntry } from "@/components/venuePlannerState";
+import type { Vendor } from "@/components/VenueCard";
+import { getVendorDetails, type VendorDetails } from "@/components/vendorPlannerState";
+import type { MasterShortlistModuleInput } from "@/components/selectedVendorRailModel";
+import {
+  defaultModuleForType,
+  detectModuleType,
+  moduleEntityLabels,
+  type ModuleType,
+} from "@/lib/modules";
 
-/** User-authored composer sends allowed before the unlock card (intro seed does not count). */
+/** User-authored composer sends before the paywall. */
 const FREE_USER_MESSAGE_LIMIT = 3;
 
-/** Seeded opener includes this many user bubbles; they do not count toward FREE_USER_MESSAGE_LIMIT. */
-const INTRO_USER_MESSAGE_COUNT = 1;
+/** User bubbles that do not count toward FREE_USER_MESSAGE_LIMIT (none: empty chat on load). */
+const INTRO_USER_MESSAGE_COUNT = 0;
 
-const mockVenues: Venue[] = [
+const venueVendors: Vendor[] = [
   {
     id: "1",
     name: "The Glasshouse Miami",
@@ -77,6 +82,96 @@ const mockVenues: Venue[] = [
     whyFit: "Great for couples wanting an intimate, nature-forward setting with character.",
     heroImage:
       "https://images.unsplash.com/photo-1526045612212-70caf35c14df?w=2400&q=90&auto=format&fit=crop",
+  },
+];
+
+const photographyVendors: Vendor[] = [
+  {
+    id: "p1",
+    name: "Luna & Co. Weddings",
+    location: "Editorial candid",
+    price: "8–10 hours; 2 shooters",
+    tag: "Documentary",
+    highlights: ["Sneak peek 1 week", "Online gallery + print store"] as const,
+    vibe: "Natural light with a warm film-inspired grade",
+    capacity: "$3.2k–$5.5k",
+    whyFit: "A balanced fit for couples who want a cohesive gallery without a heavy all-day production footprint.",
+    heroImage:
+      "https://images.unsplash.com/photo-1511285560929-771b7e3f35ca?w=2400&q=90&auto=format&fit=crop",
+    metaRowLabels: ["STYLE", "COVERAGE", "BUDGET"] as const,
+  },
+  {
+    id: "p2",
+    name: "Marlowe Photo Studio",
+    location: "Fine-art + on-camera flash",
+    price: "8h standard; rehearsal add-on",
+    tag: "Classic",
+    highlights: ["Full gallery 4 weeks", "RAW + album design"] as const,
+    vibe: "Timeless color with clean reception flash when the room needs it",
+    capacity: "$2.5k–$4.2k",
+    whyFit: "Reliable for mixed indoor/outdoor venues where lighting can swing across the run‑of‑show.",
+    heroImage:
+      "https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=2400&q=90&auto=format&fit=crop",
+    metaRowLabels: ["STYLE", "COVERAGE", "BUDGET"] as const,
+  },
+  {
+    id: "p3",
+    name: "Golden Hour Collective",
+    location: "Cinematic + posed portraiture",
+    price: "Bespoke; film + second shooter",
+    tag: "Cinematic",
+    highlights: ["Feature film 6–8 min", "Heirloom lay-flat album"] as const,
+    vibe: "Wide establishing shots, tight emotion in ceremony, and controlled portraiture in golden hour",
+    capacity: "$4.5k+",
+    whyFit: "Ideal when the brief centers on a tight portrait window and a polished long-form video memory.",
+    heroImage:
+      "https://images.unsplash.com/photo-1520854221050-0f4caff4492c?w=2400&q=90&auto=format&fit=crop",
+    metaRowLabels: ["STYLE", "COVERAGE", "BUDGET"] as const,
+  },
+];
+
+const cateringVendors: Vendor[] = [
+  {
+    id: "c1",
+    name: "Saffron & Sage Catering",
+    location: "New American + Med",
+    price: "Vegan, GF, nut-aware",
+    tag: "Plated or stations",
+    highlights: ["Full service", "Tasting before book"] as const,
+    vibe: "Seasonal menus with a structured tasting before you lock a path for service",
+    capacity: "$$–$$$ (per person)",
+    whyFit: "Strong for Miami heat + Saturday timelines where prep windows need to be explicit in the contract.",
+    heroImage:
+      "https://images.unsplash.com/photo-1551218808-94e220e084d2?w=2400&q=90&auto=format&fit=crop",
+    metaRowLabels: ["CUISINE", "DIETARY", "BUDGET"] as const,
+  },
+  {
+    id: "c2",
+    name: "Miami Table Co.",
+    location: "Family-style + late bites",
+    price: "Omni, halal, kosher ask",
+    tag: "Hospitality-led",
+    highlights: ["Pacing for speeches", "Bar package"] as const,
+    vibe: "High-touch service pacing so courses don’t collide with toasts and speeches",
+    capacity: "$$+ (per person)",
+    whyFit: "A fit for mixed headcounts and dietary mixes where you need one crew owning the run‑of‑show.",
+    heroImage:
+      "https://images.unsplash.com/photo-1556910096-6f5e944e1f56?w=2400&q=90&auto=format&fit=crop",
+    metaRowLabels: ["CUISINE", "DIETARY", "BUDGET"] as const,
+  },
+  {
+    id: "c3",
+    name: "Coconut Grove Catering",
+    location: "Latin + coastal",
+    price: "Plant-based focus",
+    tag: "Cocktail-first",
+    highlights: ["Stations or passed", "High volume"] as const,
+    vibe: "Bright, coastal flavors with a polished on-site team for cocktail-to-last-call flow",
+    capacity: "$$$+ (per person)",
+    whyFit: "Great when the party expects a long cocktail arc and a flexible floor plan to swap formats.",
+    heroImage:
+      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=2400&q=90&auto=format&fit=crop",
+    metaRowLabels: ["CUISINE", "DIETARY", "BUDGET"] as const,
   },
 ];
 
@@ -218,25 +313,83 @@ function buildConciergeIntro(query: string) {
   return `${spine} ${why} ${closer}`;
 }
 
-const THINKING_MESSAGES = [
+function buildCateringConciergeIntro(query: string) {
+  const { guestCount, location, eventType } = parseQuerySignals(query);
+  const occasion = eventType ?? "event";
+  const guestsLabel = guestCount != null ? `~${guestCount} guests` : "headcount (TBD)";
+  const locationLabel = location ?? "location (TBD)";
+
+  const spine = `For your ${occasion}, I’m calibrating caterers to ${guestsLabel} in ${locationLabel}—so proposals match service style, dietary coverage, and realistic staffing.`;
+
+  const why =
+    guestCount != null && location
+      ? `These teams routinely execute at that scale in ${location}; I’ve biased toward ones that keep tasting and prep windows predictable when the run‑of‑show is still moving.`
+      : `These teams line up for your brief first; with ${guestsLabel} and a firmer service format, we’ll lock menu paths before anyone quotes too narrow.`;
+
+  const closer = `If alcohol service or dietary mix is non‑negotiable, say the word and I’ll re-rank the shortlist.`;
+
+  return `${spine} ${why} ${closer}`;
+}
+
+function buildPhotographyConciergeIntro(query: string) {
+  const { guestCount, location, style, eventType } = parseQuerySignals(query);
+  const occasion = eventType ?? "event";
+  const guestsLabel = guestCount != null ? `~${guestCount} guests` : "headcount (TBD)";
+  const locationLabel = location ?? "location (TBD)";
+
+  const spine = `For your ${occasion}, I’m matching photographers to ${guestsLabel} in ${locationLabel}—so coverage, timing, and deliverables line up with the real run‑of‑show.`;
+
+  const why = style
+    ? `These teams are strong in a ${style} visual lane; I’ve biased toward schedules that don’t require you to miss cocktail hour for forty minutes of romantics unless you want that.`
+    : `These teams fit your brief first; once the timeline and shot list firm up, we can tighten second‑shooter and hour counts before anyone quotes too narrow.`;
+
+  const closer = `If you want mostly documentary coverage vs. a heavier portrait block, say which—I'll re-rank.`;
+
+  return `${spine} ${why} ${closer}`;
+}
+
+const VENUE_THINKING_MESSAGES = [
   "Scanning venues...",
   "Filtering by guest count...",
   "Matching your style...",
-];
+] as const;
+
+const CATERING_THINKING_MESSAGES = [
+  "Scanning caterers...",
+  "Aligning on menus and service style...",
+  "Cross-checking dietary and staffing...",
+] as const;
+
+const PHOTOGRAPHY_THINKING_MESSAGES = [
+  "Scanning photographers...",
+  "Matching style and coverage...",
+  "Cross-checking timelines and deliverables...",
+] as const;
+
+function thinkingMessagePool(m: ModuleType) {
+  if (m === "catering") return CATERING_THINKING_MESSAGES;
+  if (m === "photography") return PHOTOGRAPHY_THINKING_MESSAGES;
+  return VENUE_THINKING_MESSAGES;
+}
 
 // Keep the "thinking" experience premium and time-boxed.
 const SIMULATED_RESPONSE_DELAY_MS = 2200;
 const THINKING_MESSAGE_ROTATION_MIN_MS = 800;
 const THINKING_MESSAGE_ROTATION_MAX_MS = 1200;
 
+/** Preserves existing browser storage after internal rename to vendor ids. */
+const LS_CHAT_SELECTED_VENUE_IDS = "nyra:chat:selectedVenueIds";
+
 const DEV_RESET_STORAGE_KEYS = [
   "nyra:chat:messages",
   "nyra:chat:userMessageCount",
-  "nyra:chat:selectedVenueIds",
+  LS_CHAT_SELECTED_VENUE_IDS,
 ];
 
-const VENUE_SELECTION_REQUIRED_HINT =
-  "Select at least one venue to include in your report";
+function selectionRequiredHintForModule(moduleType: ModuleType) {
+  const w = moduleEntityLabels(moduleType).listNounSingular;
+  return `Select at least one ${w} to include in your report`;
+}
 
 const VENUE_CARD_PULSE_MS = 1100;
 
@@ -258,33 +411,38 @@ const NYRA_VENUES_SCROLL_SETTLE_MS = 72;
 const VENUE_SCROLL_AFTER_TEXT_COMPLETE_MS =
   NYRA_RESULTS_PACK_DURATION_MS + NYRA_VENUE_CARD_INTRO_TAIL_MS + NYRA_VENUES_SCROLL_SETTLE_MS;
 
-function buildInitialMessages(query: string): Message[] {
-  return [
-    {
-      id: "u1",
-      role: "user",
-      text: query,
-    },
-    {
-      id: "a1",
-      role: "assistant",
-      text: buildConciergeIntro(query),
-      venues: mockVenues,
-    },
-  ];
+function mockVendorsForModule(moduleType: ModuleType): Vendor[] {
+  if (moduleType === "catering") return cateringVendors;
+  if (moduleType === "photography") return photographyVendors;
+  return venueVendors;
+}
+
+function buildAssistantIntroForModule(query: string, moduleType: ModuleType): string {
+  if (moduleType === "catering") return buildCateringConciergeIntro(query);
+  if (moduleType === "photography") return buildPhotographyConciergeIntro(query);
+  return buildConciergeIntro(query);
 }
 
 const ChatPageContent = () => {
-  const searchParams = useSearchParams();
-  const initialQuery =
-    searchParams.get("query")?.trim() ||
-    "Looking for a modern venue for 80 guests in Miami";
-
-  const [messages, setMessages] = useState<Message[]>(() =>
-    buildInitialMessages(initialQuery)
+  const [currentModuleType, setCurrentModuleType] = useState<ModuleType | null>(null);
+  const activeModule = useMemo(
+    () =>
+      currentModuleType != null ? defaultModuleForType(currentModuleType) : null,
+    [currentModuleType]
+  );
+  const [messages, setMessages] = useState<Message[]>([]);
+  const entityLabels = useMemo(
+    () => moduleEntityLabels(currentModuleType ?? "venue"),
+    [currentModuleType]
   );
   const [input, setInput] = useState("");
-  const [selectedVenueIds, setSelectedVenueIds] = useState<string[]>([]);
+  const [selectedVendorIdsByModuleId, setSelectedVendorIdsByModuleId] = useState<
+    Record<string, string[]>
+  >({});
+  const selectedVendorIds =
+    activeModule != null
+      ? (selectedVendorIdsByModuleId[activeModule.moduleId] ?? [])
+      : [];
   const [outreachInitiated, setOutreachInitiated] = useState(false);
   const [outreachItems, setOutreachItems] = useState<OutreachItem[]>([]);
   const [isThinking, setIsThinking] = useState(false);
@@ -318,11 +476,16 @@ const ChatPageContent = () => {
     string[] | null
   >(null);
   const [outreachWhatNyraAsked, setOutreachWhatNyraAsked] = useState("");
-  const [archivedVenueIds, setArchivedVenueIds] = useState<string[]>([]);
-  const [venuePlannerById, setVenuePlannerById] = useState<Record<string, VenuePlannerEntry>>(
+  const [archivedVendorIdsByModuleId, setArchivedVendorIdsByModuleId] = useState<
+    Record<string, string[]>
+  >({});
+  const [vendorDetailsById, setVendorDetailsById] = useState<Record<string, VendorDetails>>(
     {}
   );
-  const [plannerDetailVenueId, setPlannerDetailVenueId] = useState<string | null>(null);
+  const [plannerRef, setPlannerRef] = useState<{
+    moduleId: string;
+    vendorId: string;
+  } | null>(null);
   const [railCompareOpen, setRailCompareOpen] = useState(false);
   const [updateAllVenuesModalOpen, setUpdateAllVenuesModalOpen] = useState(false);
   const [pulseVenueCards, setPulseVenueCards] = useState(false);
@@ -332,6 +495,7 @@ const ChatPageContent = () => {
   const venueHintTimeoutRef = useRef<number | undefined>(undefined);
   const outreachSimulationTimeoutsRef = useRef<number[]>([]);
   const outreachItemsRef = useRef<OutreachItem[]>([]);
+  const outreachConfirmTargetModuleIdRef = useRef<string | null>(null);
   const outreachInitiatedRef = useRef(false);
   const outreachWorkerBusyRef = useRef(false);
   const tryProcessOutreachQueueRef = useRef<() => void>(() => {});
@@ -345,7 +509,7 @@ const ChatPageContent = () => {
   const latestAssistantMessageRef = useRef<HTMLDivElement | null>(null);
   const latestAssistantResultRef = useRef<HTMLDivElement | null>(null);
   const previousIsThinkingRef = useRef(isThinking);
-  const previousUserMessageCountRef = useRef(INTRO_USER_MESSAGE_COUNT);
+  const previousUserMessageCountRef = useRef(0);
 
   const isDev = process.env.NODE_ENV === "development";
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -357,13 +521,61 @@ const ChatPageContent = () => {
     return first?.text?.trim() ?? "";
   }, [messages]);
 
-  const handlePlannerDetailVenueIdChange = useCallback((id: string | null) => {
-    setRailCompareOpen(false);
-    setPlannerDetailVenueId(id);
-  }, []);
+  const getSelectedIdsForModule = useCallback(
+    (m: ModuleType) => {
+      const id = defaultModuleForType(m).moduleId;
+      return selectedVendorIdsByModuleId[id] ?? [];
+    },
+    [selectedVendorIdsByModuleId]
+  );
+
+  const shortlistByModule = useMemo((): MasterShortlistModuleInput[] => {
+    return (["venue", "catering", "photography"] as const).map((t) => {
+      const m = defaultModuleForType(t);
+      return {
+        moduleId: m.moduleId,
+        moduleType: t,
+        activeVendorIds: selectedVendorIdsByModuleId[m.moduleId] ?? [],
+        archivedVendorIds: archivedVendorIdsByModuleId[m.moduleId] ?? [],
+      };
+    });
+  }, [selectedVendorIdsByModuleId, archivedVendorIdsByModuleId]);
+
+  const totalShortlistedCount = useMemo(
+    () => shortlistByModule.reduce((n, m) => n + m.activeVendorIds.length, 0),
+    [shortlistByModule]
+  );
+
+  const visibleShortlistByModule = useMemo(
+    () =>
+      shortlistByModule.filter(
+        (m) =>
+          m.activeVendorIds.length > 0 ||
+          (activeModule != null && m.moduleId === activeModule.moduleId)
+      ),
+    [shortlistByModule, activeModule]
+  );
+
+  const outreachItemsThisModule = useMemo(
+    () =>
+      activeModule == null
+        ? []
+        : outreachItems.filter((i) => i.moduleId === activeModule.moduleId),
+    [outreachItems, activeModule]
+  );
+
+  const effectiveOutreachMode = outreachInitiated && outreachItemsThisModule.length > 0;
+
+  const handlePlannerRefChange = useCallback(
+    (next: { moduleId: string; vendorId: string } | null) => {
+      setRailCompareOpen(false);
+      setPlannerRef(next);
+    },
+    []
+  );
 
   const handleRailCompareOpen = useCallback(() => {
-    setPlannerDetailVenueId(null);
+    setPlannerRef(null);
     setRailCompareOpen(true);
   }, []);
 
@@ -376,33 +588,33 @@ const ChatPageContent = () => {
     setUpdateAllVenuesModalOpen(true);
   }, []);
 
-  const handleBulkVenueFollowUps = useCallback((venueIds: readonly string[], message: string) => {
+  const handleBulkVenueFollowUps = useCallback((vendorIds: readonly string[], message: string) => {
     const text = message.trim();
-    if (!text || venueIds.length === 0) return;
+    if (!text || vendorIds.length === 0) return;
     const at = Date.now();
-    setVenuePlannerById((prev) => {
+    setVendorDetailsById((prev) => {
       const next = { ...prev };
-      for (const venueId of venueIds) {
-        const cur = getVenuePlannerEntry(next, venueId);
+      for (const vendorId of vendorIds) {
+        const cur = getVendorDetails(next, vendorId);
         const entry = { id: crypto.randomUUID(), text, at };
-        next[venueId] = { ...cur, followUps: [...cur.followUps, entry] };
+        next[vendorId] = { ...cur, followUps: [...cur.followUps, entry] };
       }
       return next;
     });
   }, []);
 
-  const plannerSheetOpen = plannerDetailVenueId != null || railCompareOpen;
+  const plannerSheetOpen = plannerRef != null || railCompareOpen;
 
   useEffect(() => {
-    if (plannerDetailVenueId == null) return;
+    if (plannerRef == null) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
-      handlePlannerDetailVenueIdChange(null);
+      handlePlannerRefChange(null);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [plannerDetailVenueId, handlePlannerDetailVenueIdChange]);
+  }, [plannerRef, handlePlannerRefChange]);
 
   const billableUserMessages = Math.max(0, userMessageCount - INTRO_USER_MESSAGE_COUNT);
   const freeMessagesRemaining = Math.max(
@@ -428,9 +640,10 @@ const ChatPageContent = () => {
       // ignore
     }
 
-    setMessages(buildInitialMessages(initialQuery));
+    setMessages([]);
     setInput("");
-    setSelectedVenueIds([]);
+    setCurrentModuleType(null);
+    setSelectedVendorIdsByModuleId({});
     setOutreachInitiated(false);
     setOutreachItems([]);
     setOutreachConfirmOpen(false);
@@ -441,9 +654,9 @@ const ChatPageContent = () => {
     setOutreachReviewExcludedVenueIds([]);
     setOutreachConfirmScopeIds(null);
     setOutreachWhatNyraAsked("");
-    setArchivedVenueIds([]);
-    setVenuePlannerById({});
-    setPlannerDetailVenueId(null);
+    setArchivedVendorIdsByModuleId({});
+    setVendorDetailsById({});
+    setPlannerRef(null);
     setRailCompareOpen(false);
     setUpdateAllVenuesModalOpen(false);
     outreachBundleRef.current = null;
@@ -473,10 +686,10 @@ const ChatPageContent = () => {
       // ignore
     }
 
-    const refreshed = buildInitialMessages(initialQuery);
     queueMicrotask(() => {
-      setMessages(refreshed);
-      setSelectedVenueIds([]);
+      setMessages([]);
+      setCurrentModuleType(null);
+      setSelectedVendorIdsByModuleId({});
       setOutreachInitiated(false);
       setOutreachItems([]);
       setOutreachConfirmOpen(false);
@@ -487,9 +700,9 @@ const ChatPageContent = () => {
       setOutreachReviewExcludedVenueIds([]);
       setOutreachConfirmScopeIds(null);
       setOutreachWhatNyraAsked("");
-      setArchivedVenueIds([]);
-      setVenuePlannerById({});
-      setPlannerDetailVenueId(null);
+      setArchivedVendorIdsByModuleId({});
+      setVendorDetailsById({});
+      setPlannerRef(null);
       setRailCompareOpen(false);
       setUpdateAllVenuesModalOpen(false);
       outreachBundleRef.current = null;
@@ -503,10 +716,9 @@ const ChatPageContent = () => {
       setThinkingExitMessageId(null);
       setAssistantRevealMessageId(null);
 
-      previousUserMessageCountRef.current = refreshed.filter((m) => m.role === "user").length;
+      previousUserMessageCountRef.current = 0;
       previousIsThinkingRef.current = false;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run once on mount; initialQuery is first paint only
   }, []);
 
   useEffect(() => {
@@ -521,11 +733,12 @@ const ChatPageContent = () => {
 
     let timeoutId: number | undefined;
 
+    const pool = thinkingMessagePool(currentModuleType ?? "venue");
     const scheduleNext = () => {
       const ms = nextRotationMs();
       setThinkingMessageRotationMs(ms);
       timeoutId = window.setTimeout(() => {
-        setThinkingMessageIndex((prev) => (prev + 1) % THINKING_MESSAGES.length);
+        setThinkingMessageIndex((prev) => (prev + 1) % pool.length);
         scheduleNext();
       }, ms);
     };
@@ -535,7 +748,7 @@ const ChatPageContent = () => {
     return () => {
       if (timeoutId) window.clearTimeout(timeoutId);
     };
-  }, [isThinking]);
+  }, [isThinking, currentModuleType]);
 
   /** After outreach starts, advance each queued venue one at a time (demo). */
   const tryProcessOutreachQueue = useCallback(() => {
@@ -547,7 +760,7 @@ const ChatPageContent = () => {
     if (!next) return;
 
     outreachWorkerBusyRef.current = true;
-    const venueId = next.venueId;
+    const vendorId = next.vendorId;
     const timeouts = outreachSimulationTimeoutsRef.current;
 
     const jitter = (min: number, max: number) => {
@@ -562,7 +775,7 @@ const ChatPageContent = () => {
 
     after(jitter(OUTREACH_QUEUED_TO_DRAFTING_MIN_MS, OUTREACH_QUEUED_TO_DRAFTING_MAX_MS), () => {
       setOutreachItems((prev) => {
-        const row = prev.find((r) => r.venueId === venueId);
+        const row = prev.find((r) => r.vendorId === vendorId);
         if (!row || row.status !== "queued") {
           outreachWorkerBusyRef.current = false;
           queueMicrotask(() => tryProcessOutreachQueueRef.current());
@@ -570,7 +783,7 @@ const ChatPageContent = () => {
         }
         const draftingAt = Date.now();
         return prev.map((r) =>
-          r.venueId === venueId
+          r.vendorId === vendorId
             ? { ...r, status: "drafting-outreach", statusUpdatedAt: draftingAt }
             : r
         );
@@ -582,7 +795,7 @@ const ChatPageContent = () => {
           : jitter(OUTREACH_DRAFTING_HOLD_MIN_MS, OUTREACH_DRAFTING_HOLD_MAX_MS),
         () => {
           setOutreachItems((prev) => {
-            const row = prev.find((r) => r.venueId === venueId);
+            const row = prev.find((r) => r.vendorId === vendorId);
             if (!row || row.status !== "drafting-outreach") {
               outreachWorkerBusyRef.current = false;
               queueMicrotask(() => tryProcessOutreachQueueRef.current());
@@ -590,7 +803,7 @@ const ChatPageContent = () => {
             }
             const contactedAt = Date.now();
             return prev.map((r) =>
-              r.venueId === venueId
+              r.vendorId === vendorId
                 ? { ...r, status: "contacted", statusUpdatedAt: contactedAt }
                 : r
             );
@@ -629,7 +842,7 @@ const ChatPageContent = () => {
   /** New assistant turn with a shortlist: arm streaming / completion before venues mount. */
   useEffect(() => {
     const last = messages[messages.length - 1];
-    if (!last || last.role !== "assistant" || last.isThinking || !last.venues?.length) return;
+    if (!last || last.role !== "assistant" || last.isThinking || !last.vendors?.length) return;
 
     queueMicrotask(() => {
       if (prefersReducedMotion) {
@@ -704,7 +917,7 @@ const ChatPageContent = () => {
     if (!isTextComplete || isThinking) return;
 
     const last = messages[messages.length - 1];
-    if (!last || last.role !== "assistant" || !last.venues?.length) return;
+    if (!last || last.role !== "assistant" || !last.vendors?.length) return;
 
     const waitMs = prefersReducedMotion ? 48 : VENUE_SCROLL_AFTER_TEXT_COMPLETE_MS;
 
@@ -752,11 +965,10 @@ const ChatPageContent = () => {
     setIsTextComplete(true);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (billableUserMessages >= FREE_USER_MESSAGE_LIMIT || isThinking) return;
-    const trimmed = input.trim();
-    if (!trimmed) return;
+  const sendUserMessage = (rawText: string) => {
+    if (billableUserMessages >= FREE_USER_MESSAGE_LIMIT || isThinking) return false;
+    const trimmed = rawText.trim();
+    if (!trimmed) return false;
 
     const newUserMessage: Message = {
       id: crypto.randomUUID(),
@@ -764,23 +976,26 @@ const ChatPageContent = () => {
       text: trimmed,
     };
 
+    const mType = detectModuleType(trimmed);
+    setCurrentModuleType(mType);
+    const pool = thinkingMessagePool(mType);
     const assistantPlaceholderId = crypto.randomUUID();
     const assistantPlaceholderMessage: Message = {
       id: assistantPlaceholderId,
       role: "assistant",
-      text: THINKING_MESSAGES[0] ?? "Thinking...",
+      text: pool[0] ?? "Thinking...",
       isThinking: true,
     };
 
     const newAssistantMessage: Message = {
       id: assistantPlaceholderId,
       role: "assistant",
-      text: buildConciergeIntro(trimmed),
-      venues: mockVenues,
+      text: buildAssistantIntroForModule(trimmed, mType),
+      vendors: mockVendorsForModule(mType),
+      resultModuleType: mType,
     };
 
     setMessages((prev) => [...prev, newUserMessage, assistantPlaceholderMessage]);
-    setInput("");
     setThinkingMessageIndex(0);
     setThinkingMessageRotationMs(THINKING_MESSAGE_ROTATION_MIN_MS);
     setIsThinking(true);
@@ -806,78 +1021,152 @@ const ChatPageContent = () => {
         );
       }, 520);
     }, SIMULATED_RESPONSE_DELAY_MS);
+
+    return true;
   };
 
-  const toggleVenue = (id: string) => {
-    setSelectedVenueIds((prev) => {
-      if (!prev.includes(id)) {
-        setArchivedVenueIds((arch) => arch.filter((x) => x !== id));
-        return [...prev, id];
+  const sendLandingQueryRef = useRef(sendUserMessage);
+  sendLandingQueryRef.current = sendUserMessage;
+
+  /**
+   * Landing hero submits via GET `/chat?query=...`. Consume after the mount-reset
+   * microtask (see effect above) so messages are not cleared after send; strip `query`
+   * from the URL immediately so Strict Mode remount / refresh does not resend.
+   */
+  useEffect(() => {
+    queueMicrotask(() => {
+      try {
+        const url = new URL(window.location.href);
+        const trimmed = url.searchParams.get("query")?.trim() ?? "";
+        if (!trimmed) return;
+
+        url.searchParams.delete("query");
+        const qs = url.searchParams.toString();
+        window.history.replaceState(
+          window.history.state,
+          "",
+          `${url.pathname}${qs ? `?${qs}` : ""}${url.hash}`
+        );
+
+        sendLandingQueryRef.current(trimmed);
+      } catch {
+        // ignore invalid URL / storage
+      }
+    });
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const t = input.trim();
+    if (!t) return;
+    if (sendUserMessage(t)) {
+      setInput("");
+    }
+  };
+
+  const toggleVenue = (id: string, resultModule: ModuleType) => {
+    const modId = defaultModuleForType(resultModule).moduleId;
+    setSelectedVendorIdsByModuleId((prev) => {
+      const list = prev[modId] ?? [];
+      if (!list.includes(id)) {
+        setArchivedVendorIdsByModuleId((a) => {
+          const forMod = a[modId] ?? [];
+          if (!forMod.includes(id)) return a;
+          return { ...a, [modId]: forMod.filter((x) => x !== id) };
+        });
+        return { ...prev, [modId]: [...list, id] };
       }
       if (outreachInitiatedRef.current) {
-        const row = outreachItemsRef.current.find((i) => i.venueId === id);
-        if (
-          row &&
-          (row.status === "contacted" || row.status === "replied")
-        ) {
+        const row = outreachItemsRef.current.find(
+          (i) => i.moduleId === modId && i.vendorId === id
+        );
+        if (row && (row.status === "contacted" || row.status === "replied")) {
           return prev;
         }
       }
       if (outreachInitiatedRef.current) {
-        setOutreachItems((items) => items.filter((item) => item.venueId !== id));
+        setOutreachItems((items) =>
+          items.filter((item) => !(item.moduleId === modId && item.vendorId === id))
+        );
       }
-      return prev.filter((v) => v !== id);
+      return { ...prev, [modId]: list.filter((v) => v !== id) };
     });
     setVenueSelectionHint(null);
   };
 
-  const removeVenueFromShortlist = useCallback((venueId: string) => {
-    if (outreachInitiatedRef.current) {
-      const row = outreachItemsRef.current.find((i) => i.venueId === venueId);
-      if (
-        row &&
-        (row.status === "contacted" || row.status === "replied")
-      ) {
-        return;
+  const removeVenueFromShortlist = useCallback(
+    (venueId: string, resultModule?: ModuleType) => {
+      const m: ModuleType = resultModule ?? currentModuleType ?? "venue";
+      const modId = defaultModuleForType(m).moduleId;
+      if (outreachInitiatedRef.current) {
+        const row = outreachItemsRef.current.find(
+          (i) => i.moduleId === modId && i.vendorId === venueId
+        );
+        if (row && (row.status === "contacted" || row.status === "replied")) {
+          return;
+        }
       }
-    }
-    setSelectedVenueIds((prev) => prev.filter((id) => id !== venueId));
-    if (outreachInitiatedRef.current) {
-      setOutreachItems((items) => items.filter((item) => item.venueId !== venueId));
-    }
-    setVenueSelectionHint(null);
-  }, []);
+      setSelectedVendorIdsByModuleId((p) => ({
+        ...p,
+        [modId]: (p[modId] ?? []).filter((x) => x !== venueId),
+      }));
+      if (outreachInitiatedRef.current) {
+        setOutreachItems((items) =>
+          items.filter((item) => !(item.moduleId === modId && item.vendorId === venueId))
+        );
+      }
+      setVenueSelectionHint(null);
+    },
+    [currentModuleType]
+  );
 
   const handleAddNyraNote = useCallback((venueId: string, text: string) => {
     const entry = { id: crypto.randomUUID(), text, at: Date.now() };
-    setVenuePlannerById((prev) => {
-      const cur = getVenuePlannerEntry(prev, venueId);
+    setVendorDetailsById((prev) => {
+      const cur = getVendorDetails(prev, venueId);
       return { ...prev, [venueId]: { ...cur, nyraNotes: [...cur.nyraNotes, entry] } };
     });
   }, []);
 
   const handleAddFollowUp = useCallback((venueId: string, text: string) => {
     const entry = { id: crypto.randomUUID(), text, at: Date.now() };
-    setVenuePlannerById((prev) => {
-      const cur = getVenuePlannerEntry(prev, venueId);
+    setVendorDetailsById((prev) => {
+      const cur = getVendorDetails(prev, venueId);
       return { ...prev, [venueId]: { ...cur, followUps: [...cur.followUps, entry] } };
     });
   }, []);
 
-  const handleArchiveVenue = useCallback((venueId: string) => {
-    setSelectedVenueIds((p) => p.filter((id) => id !== venueId));
-    setArchivedVenueIds((p) => (p.includes(venueId) ? p : [...p, venueId]));
+  const handleArchiveVenue = useCallback((modId: string, venueId: string) => {
+    setSelectedVendorIdsByModuleId((p) => ({
+      ...p,
+      [modId]: (p[modId] ?? []).filter((id) => id !== venueId),
+    }));
+    setArchivedVendorIdsByModuleId((a) => {
+      const forMod = a[modId] ?? [];
+      if (forMod.includes(venueId)) return a;
+      return { ...a, [modId]: [...forMod, venueId] };
+    });
     if (outreachInitiatedRef.current) {
-      setOutreachItems((items) => items.filter((item) => item.venueId !== venueId));
+      setOutreachItems((items) =>
+        items.filter((item) => !(item.moduleId === modId && item.vendorId === venueId))
+      );
     }
   }, []);
 
-  const handleRestoreVenue = useCallback((venueId: string) => {
-    setArchivedVenueIds((p) => p.filter((id) => id !== venueId));
-    setSelectedVenueIds((p) => (p.includes(venueId) ? p : [...p, venueId]));
+  const handleRestoreVenue = useCallback((modId: string, venueId: string) => {
+    setArchivedVendorIdsByModuleId((a) => ({
+      ...a,
+      [modId]: (a[modId] ?? []).filter((id) => id !== venueId),
+    }));
+    setSelectedVendorIdsByModuleId((p) => {
+      const cur = p[modId] ?? [];
+      if (cur.includes(venueId)) return p;
+      return { ...p, [modId]: [...cur, venueId] };
+    });
   }, []);
 
   const closeOutreachConfirmModal = useCallback(() => {
+    outreachConfirmTargetModuleIdRef.current = null;
     setOutreachConfirmOpen(false);
     setOutreachConfirmPhase("review");
     setOutreachProgressVenueIds(null);
@@ -894,7 +1183,7 @@ const ChatPageContent = () => {
       const batchSet = new Set(batch);
       setOutreachItems((prev) =>
         prev.filter((row) => {
-          if (!batchSet.has(row.venueId)) return true;
+          if (!batchSet.has(row.vendorId)) return true;
           if (row.status === "contacted" || row.status === "replied") return true;
           return false;
         })
@@ -906,17 +1195,21 @@ const ChatPageContent = () => {
     });
   }, [closeOutreachConfirmModal]);
 
-  const openOutreachConfirm = useCallback((scopeVenueIds?: readonly string[] | null) => {
-    setOutreachReviewVenueNote("");
-    setOutreachReviewEventBrief(originalSearchBrief);
-    setOutreachReviewExcludedVenueIds([]);
-    setOutreachConfirmPhase("review");
-    setOutreachProgressVenueIds(null);
-    setOutreachConfirmScopeIds(
-      scopeVenueIds != null && scopeVenueIds.length > 0 ? [...scopeVenueIds] : null
-    );
-    setOutreachConfirmOpen(true);
-  }, [originalSearchBrief]);
+  const openOutreachConfirm = useCallback(
+    (scopeVenueIds?: readonly string[] | null, targetModuleId?: string) => {
+      setOutreachReviewVenueNote("");
+      setOutreachReviewEventBrief(originalSearchBrief);
+      setOutreachReviewExcludedVenueIds([]);
+      setOutreachConfirmPhase("review");
+      setOutreachProgressVenueIds(null);
+      outreachConfirmTargetModuleIdRef.current = targetModuleId ?? null;
+      setOutreachConfirmScopeIds(
+        scopeVenueIds != null && scopeVenueIds.length > 0 ? [...scopeVenueIds] : null
+      );
+      setOutreachConfirmOpen(true);
+    },
+    [originalSearchBrief]
+  );
 
   const toggleOutreachReviewVenueIncluded = useCallback((venueId: string) => {
     setOutreachReviewExcludedVenueIds((prev) =>
@@ -924,19 +1217,24 @@ const ChatPageContent = () => {
     );
   }, []);
 
-  const handleVenueReportCtaThisVenueOnly = useCallback((venueId: string) => {
-    openOutreachConfirm([venueId]);
-  }, [openOutreachConfirm]);
+  const handleVenueReportCtaThisVenueOnly = useCallback(
+    (moduleId: string, venueId: string) => {
+      openOutreachConfirm([venueId], moduleId);
+    },
+    [openOutreachConfirm]
+  );
 
   const handleVenueReportCta = () => {
-    if (outreachInitiated) {
-      const withoutRow = venueIdsPendingOutreachRow(
+    if (activeModule == null) return;
+
+    if (outreachInitiated && outreachItemsThisModule.length > 0) {
+      const withoutRow = vendorIdsPendingOutreachRow(
         true,
-        selectedVenueIds,
-        outreachItems
+        selectedVendorIds,
+        outreachItemsThisModule
       );
-      const inFlight = selectedVenueIds.filter((id) => {
-        const row = outreachItems.find((i) => i.venueId === id);
+      const inFlight = selectedVendorIds.filter((id) => {
+        const row = outreachItemsThisModule.find((i) => i.vendorId === id);
         return row?.status === "queued" || row?.status === "drafting-outreach";
       });
       if (withoutRow.length > 0) {
@@ -952,12 +1250,13 @@ const ChatPageContent = () => {
       return;
     }
 
-    if (selectedVenueIds.length > 0) {
+    if (selectedVendorIds.length > 0) {
       openOutreachConfirm();
       return;
     }
 
-    setVenueSelectionHint(VENUE_SELECTION_REQUIRED_HINT);
+    const needSelectionHint = selectionRequiredHintForModule(activeModule.moduleType);
+    setVenueSelectionHint(needSelectionHint);
     setPulseVenueCards(true);
     if (venuePulseTimeoutRef.current) window.clearTimeout(venuePulseTimeoutRef.current);
     if (venueHintTimeoutRef.current) window.clearTimeout(venueHintTimeoutRef.current);
@@ -966,9 +1265,7 @@ const ChatPageContent = () => {
       venuePulseTimeoutRef.current = undefined;
     }, VENUE_CARD_PULSE_MS);
     venueHintTimeoutRef.current = window.setTimeout(() => {
-      setVenueSelectionHint((current) =>
-        current === VENUE_SELECTION_REQUIRED_HINT ? null : current
-      );
+      setVenueSelectionHint((current) => (current === needSelectionHint ? null : current));
       venueHintTimeoutRef.current = undefined;
     }, 6000);
 
@@ -988,6 +1285,8 @@ const ChatPageContent = () => {
   };
 
   const handleConfirmOutreach = useCallback(() => {
+    if (activeModule == null) return;
+
     const note = outreachReviewVenueNote.trim();
     const askBlurb = note || OUTREACH_DEFAULT_INQUIRY_BLURB;
     setOutreachWhatNyraAsked(askBlurb);
@@ -1019,30 +1318,41 @@ const ChatPageContent = () => {
       ids.filter((id) => !excluded.has(id));
 
     if (!outreachInitiated) {
-      if (selectedVenueIds.length === 0) return;
-      const idsForSend = filterExcluded(applyScope(selectedVenueIds));
+      if (selectedVendorIds.length === 0) return;
+      const idsForSend = filterExcluded(applyScope(selectedVendorIds));
       if (idsForSend.length === 0) return;
       setOutreachProgressVenueIds([...idsForSend]);
       setOutreachConfirmPhase("progress");
       setOutreachInitiated(true);
-      setOutreachItems(outreachItemsFromVenueIds(idsForSend));
+      const mid = outreachConfirmTargetModuleIdRef.current ?? activeModule.moduleId;
+      outreachConfirmTargetModuleIdRef.current = null;
+      setOutreachItems(outreachItemsFromVendorIds(mid, idsForSend));
       setOutreachConfirmScopeIds(null);
       return;
     }
 
-    const pendingIds = venueIdsPendingOutreachRow(true, selectedVenueIds, outreachItems);
+    const pendingIds = vendorIdsPendingOutreachRow(
+      true,
+      selectedVendorIds,
+      outreachItemsThisModule
+    );
     const idsForSend = filterExcluded(applyScope(pendingIds));
     if (idsForSend.length === 0) return;
 
     setOutreachProgressVenueIds([...idsForSend]);
     setOutreachConfirmPhase("progress");
+    const mid = outreachConfirmTargetModuleIdRef.current ?? activeModule.moduleId;
+    outreachConfirmTargetModuleIdRef.current = null;
     const now = Date.now();
     setOutreachItems((prev) => {
-      const have = new Set(prev.map((r) => r.venueId));
+      const have = new Set(
+        prev.filter((r) => r.moduleId === mid).map((r) => r.vendorId)
+      );
       const additions = idsForSend
         .filter((id) => !have.has(id))
-        .map((venueId) => ({
-          venueId,
+        .map((vendorId) => ({
+          moduleId: mid,
+          vendorId,
           status: "queued" as const,
           statusUpdatedAt: now,
         }));
@@ -1050,6 +1360,7 @@ const ChatPageContent = () => {
     });
     setOutreachConfirmScopeIds(null);
   }, [
+    activeModule,
     originalSearchBrief,
     outreachConfirmScopeIds,
     outreachInitiated,
@@ -1057,12 +1368,13 @@ const ChatPageContent = () => {
     outreachReviewEventBrief,
     outreachReviewExcludedVenueIds,
     outreachReviewVenueNote,
-    selectedVenueIds,
+    selectedVendorIds,
+    outreachItemsThisModule,
   ]);
 
   useEffect(() => {
     if (outreachConfirmPhase !== "progress" || !outreachProgressVenueIds?.length) return;
-    const byId = new Map(outreachItems.map((i) => [i.venueId, i]));
+    const byId = new Map(outreachItems.map((i) => [i.vendorId, i]));
     const allSent = outreachProgressVenueIds.every((id) => {
       const row = byId.get(id);
       return row && (row.status === "contacted" || row.status === "replied");
@@ -1086,22 +1398,24 @@ const ChatPageContent = () => {
     };
   }, []);
 
-  const venueById = useMemo(() => {
-    const map = new Map<string, Venue>();
+  const vendorById = useMemo(() => {
+    const map = new Map<string, Vendor>();
     for (const message of messages) {
-      if (message.role === "assistant" && message.venues?.length) {
-        for (const venue of message.venues) map.set(venue.id, venue);
+      if (message.role === "assistant" && message.vendors?.length) {
+        for (const v of message.vendors) map.set(v.id, v);
       }
     }
-    for (const venue of mockVenues) map.set(venue.id, venue);
+    for (const v of venueVendors) map.set(v.id, v);
+    for (const v of cateringVendors) map.set(v.id, v);
+    for (const v of photographyVendors) map.set(v.id, v);
     return map;
   }, [messages]);
 
   const outreachConfirmVenues = useMemo(() => {
     if (!outreachConfirmOpen) return [];
     const baseIds = outreachInitiated
-      ? venueIdsPendingOutreachRow(true, selectedVenueIds, outreachItems)
-      : selectedVenueIds;
+      ? vendorIdsPendingOutreachRow(true, selectedVendorIds, outreachItems)
+      : selectedVendorIds;
     const scope = outreachConfirmScopeIds;
     const ids =
       scope != null && scope.length > 0
@@ -1109,32 +1423,38 @@ const ChatPageContent = () => {
         : baseIds;
     return ids.map((id) => ({
       id,
-      name: venueById.get(id)?.name ?? "Venue",
+      name: vendorById.get(id)?.name ?? entityLabels.defaultCardName,
     }));
   }, [
+    entityLabels.defaultCardName,
     outreachConfirmOpen,
     outreachConfirmScopeIds,
     outreachInitiated,
     outreachItems,
-    selectedVenueIds,
-    venueById,
+    selectedVendorIds,
+    vendorById,
   ]);
 
   const outreachProgressVenueRows = useMemo(() => {
     if (!outreachProgressVenueIds?.length) return null;
     return outreachProgressVenueIds.map((id) => ({
       id,
-      name: venueById.get(id)?.name ?? "Venue",
+      name: vendorById.get(id)?.name ?? entityLabels.defaultCardName,
     }));
-  }, [outreachProgressVenueIds, venueById]);
+  }, [entityLabels.defaultCardName, outreachProgressVenueIds, vendorById]);
 
   const updateAllModalVenues = useMemo(
     () =>
-      selectedVenueIds.map((id) => ({
+      selectedVendorIds.map((id) => ({
         id,
-        name: venueById.get(id)?.name ?? "Venue",
+        name: vendorById.get(id)?.name ?? entityLabels.defaultCardName,
       })),
-    [selectedVenueIds, venueById]
+    [entityLabels.defaultCardName, selectedVendorIds, vendorById]
+  );
+
+  const thinkingMessageList = useMemo(
+    () => [...thinkingMessagePool(currentModuleType ?? "venue")],
+    [currentModuleType]
   );
 
   const composerHasText = input.trim().length > 0;
@@ -1160,32 +1480,37 @@ const ChatPageContent = () => {
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-chat-border bg-chat-pane">
             <ChatMessages
+              moduleType={currentModuleType ?? undefined}
               messages={messages}
+              onSelectExamplePrompt={sendUserMessage}
               latestMessageRef={latestMessageRef}
               thinkingBubbleRef={thinkingBubbleRef}
               latestAssistantMessageRef={latestAssistantMessageRef}
               latestAssistantResultRef={latestAssistantResultRef}
-              selectedVenueIds={selectedVenueIds}
+              selectedVendorIds={selectedVendorIds}
+              getSelectedIdsForModule={getSelectedIdsForModule}
               pulseVenueCards={pulseVenueCards}
               onToggleVenue={toggleVenue}
               onRemoveVenueFromShortlist={removeVenueFromShortlist}
               venueSelectionHint={venueSelectionHint}
               onVenueReportCta={handleVenueReportCta}
               composerHasText={composerHasText}
-              thinkingMessages={THINKING_MESSAGES}
+              thinkingMessages={thinkingMessageList}
               thinkingMessageIndex={thinkingMessageIndex}
               thinkingMessageRotationMs={thinkingMessageRotationMs}
               thinkingExitMessageId={thinkingExitMessageId}
               assistantRevealMessageId={assistantRevealMessageId}
               isTextComplete={isTextComplete}
-              outreachMode={outreachInitiated}
+              outreachMode={effectiveOutreachMode}
               outreachItems={outreachItems}
-              plannerDetailVenueId={plannerDetailVenueId}
+              pipelineOutreachItems={outreachItemsThisModule}
+              plannerRef={plannerRef}
               onAssistantStreamProgress={handleAssistantStreamProgress}
               onAssistantStreamComplete={handleAssistantStreamComplete}
             />
 
             <ChatInputBar
+              moduleType={currentModuleType ?? undefined}
               isPaywalled={isPaywalled}
               isThinking={isThinking}
               input={input}
@@ -1196,35 +1521,40 @@ const ChatPageContent = () => {
             />
           </div>
 
-          {plannerDetailVenueId != null ? (
+          {plannerRef != null ? (
             <div
               role="presentation"
               aria-hidden
               className="absolute inset-0 z-10 cursor-default bg-transparent pointer-events-auto"
-              onClick={() => handlePlannerDetailVenueIdChange(null)}
+              onClick={() => handlePlannerRefChange(null)}
             />
           ) : null}
         </section>
 
-        <SelectedVenuesSidebar
-          selectedVenueIds={selectedVenueIds}
-          archivedVenueIds={archivedVenueIds}
-          venueById={venueById}
+        <SelectedVendorsSidebar
+          moduleType={currentModuleType ?? undefined}
+          selectedVendorIds={selectedVendorIds}
+          shortlistByModule={shortlistByModule}
+          visibleShortlistByModule={visibleShortlistByModule}
+          totalShortlistedCount={totalShortlistedCount}
+          allOutreachItems={outreachItems}
+          outreachInitiated={outreachInitiated}
+          vendorById={vendorById}
           venueSelectionHint={venueSelectionHint}
           onVenueReportCta={handleVenueReportCta}
           onVenueReportCtaThisVenueOnly={handleVenueReportCtaThisVenueOnly}
           composerHasText={composerHasText}
-          outreachMode={outreachInitiated}
-          outreachItems={outreachItems}
-          plannerDetailVenueId={plannerDetailVenueId}
-          onPlannerDetailVenueIdChange={handlePlannerDetailVenueIdChange}
+          outreachMode={effectiveOutreachMode}
+          outreachItems={outreachItemsThisModule}
+          plannerRef={plannerRef}
+          onPlannerRefChange={handlePlannerRefChange}
           originalSearchBrief={originalSearchBrief}
           outreachWhatNyraAsked={outreachWhatNyraAsked}
-          venuePlannerById={venuePlannerById}
+          vendorDetailsById={vendorDetailsById}
           onAddNyraNote={handleAddNyraNote}
           onAddFollowUp={handleAddFollowUp}
-          onArchiveVenue={handleArchiveVenue}
-          onRestoreVenue={handleRestoreVenue}
+          onArchiveVendor={handleArchiveVenue}
+          onRestoreVendor={handleRestoreVenue}
           reduceMotion={prefersReducedMotion}
           railCompareOpen={railCompareOpen}
           onRailCompareOpen={handleRailCompareOpen}
@@ -1234,16 +1564,18 @@ const ChatPageContent = () => {
 
         {updateAllVenuesModalOpen ? (
           <UpdateAllVenuesModal
+            moduleType={currentModuleType ?? "venue"}
             open
             onClose={() => setUpdateAllVenuesModalOpen(false)}
             venues={updateAllModalVenues}
-            outreachItems={outreachItems}
+            outreachItems={outreachItemsThisModule}
             reduceMotion={prefersReducedMotion}
             onSendFollowUps={handleBulkVenueFollowUps}
           />
         ) : null}
 
         <OutreachConfirmPanel
+          moduleType={currentModuleType ?? "venue"}
           open={outreachConfirmOpen}
           phase={outreachConfirmPhase}
           progressVenues={outreachProgressVenueRows}
@@ -1394,14 +1726,10 @@ const ThinkingStyles = () => (
 );
 
 const ChatPage = () => (
-  <Suspense
-    fallback={
-      <main className="nyra-chat-shell h-svh max-h-svh min-h-0 overflow-hidden bg-chat-canvas font-sans text-chat-text-primary antialiased" />
-    }
-  >
+  <>
     <ThinkingStyles />
     <ChatPageContent />
-  </Suspense>
+  </>
 );
 
 export default ChatPage;

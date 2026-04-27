@@ -1,20 +1,29 @@
+import { moduleEntityLabels, type ModuleType } from "@/lib/modules";
+
 type PaywallCardProps = {
+  moduleType?: ModuleType;
   venueSelectionHint: string | null;
   onVenueReportCta: () => void;
 };
 
-const CONCIERGE_STEPS = [
-  "We reach out to your selected venues",
-  "We gather pricing and availability",
-  "You receive a curated report in 24–72 hours",
-] as const;
-
-export function PaywallCard({ venueSelectionHint, onVenueReportCta }: PaywallCardProps) {
+export function PaywallCard({
+  moduleType = "venue",
+  venueSelectionHint,
+  onVenueReportCta,
+}: PaywallCardProps) {
+  const n = moduleEntityLabels(moduleType).listNoun;
+  const reportLabel =
+    moduleType === "catering" ? "catering" : moduleType === "photography" ? "photography" : "venue";
+  const steps = [
+    `We reach out to your selected ${n}`,
+    "We gather pricing and availability",
+    "You receive a curated report in 24–72 hours",
+  ] as const;
   return (
     <div className="nyra-surface-elevated rounded-2xl border border-chat-border bg-chat-raised p-7 sm:p-9">
       <p className="nyra-eyebrow">What happens next</p>
       <ol className="mt-4 space-y-3.5">
-        {CONCIERGE_STEPS.map((item, index) => (
+        {steps.map((item, index) => (
           <li
             key={item}
             className="flex gap-3 text-[14px] leading-snug text-chat-text-secondary"
@@ -36,7 +45,7 @@ export function PaywallCard({ venueSelectionHint, onVenueReportCta }: PaywallCar
           onClick={onVenueReportCta}
           className="nyra-btn-primary w-full sm:w-auto sm:min-w-[240px] sm:px-10"
         >
-          Get my venue report — $99
+          Get my {reportLabel} report — $99
         </button>
         {venueSelectionHint ? (
           <p

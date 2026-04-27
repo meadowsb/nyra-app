@@ -2,10 +2,10 @@
 
 import type { CSSProperties } from "react";
 
-import type { Venue } from "@/components/VenueCard";
+import type { Vendor } from "@/components/VenueCard";
 import { VenueCard } from "@/components/VenueCard";
 
-const previewVenues: Venue[] = [
+const previewVendors: Vendor[] = [
   {
     id: "preview-1",
     name: "The Glasshouse Miami",
@@ -71,7 +71,7 @@ export function LandingVenueExample({
   return (
     <div className="rounded-2xl border border-chat-border bg-chat-canvas p-4 sm:p-5">
       <div className="grid items-start gap-1.5 sm:grid-cols-2 sm:gap-2 lg:grid-cols-3 lg:gap-2">
-        {previewVenues.map((venue, index) => {
+        {previewVendors.map((v, index) => {
           const alpha = scrub
             ? Math.min(1, Math.max(0, cardRevealAlpha![index] ?? 0))
             : undefined;
@@ -91,8 +91,8 @@ export function LandingVenueExample({
               : undefined;
 
           return (
-            <div key={venue.id} className="min-w-0" style={wrapStyle}>
-              <VenueCard venue={venue} selected={false} pulse={false} onToggle={() => {}} />
+            <div key={v.id} className="min-w-0" style={wrapStyle}>
+              <VenueCard vendor={v} selected={false} pulse={false} onToggle={() => {}} />
             </div>
           );
         })}

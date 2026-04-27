@@ -9,18 +9,19 @@ export type LandingScrollBgSection = (typeof SECTION_ORDER)[number];
 /**
  * Curated Unsplash stills (stable `images.unsplash.com` IDs — not search/query URLs).
  * Request 2880px wide + q=90 so full-viewport backgrounds stay sharp (no CSS blur / minimal scale).
- * how: garden gazebo / greenery
- * example: modern concrete / minimalist hall
- * testimonials: chandelier dining / warm reception
- * trust: long-table banquet / refined hall
+ * how: romantic couple / golden-hour embrace
+ * example: romantic couple / cinematic wedding moment
+ * testimonials: celebration / confetti + aisle walk + joy
+ * trust: wedding stationery + ribbon + florals / soft editorial detail
  */
 const IMAGE_BY_SECTION: Record<Exclude<LandingScrollBgSection, "footer">, string> = {
-  how: "https://images.unsplash.com/photo-1523438885200-e635ba2c371e?w=2880&q=90&auto=format&fit=crop",
+  how: "https://images.unsplash.com/photo-1761211488163-67bc659a8180?w=2880&q=90&auto=format&fit=crop",
   example:
-    "https://images.unsplash.com/photo-1505236858219-8359eb29e329?w=2880&q=90&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=2880&q=90&auto=format&fit=crop",
   testimonials:
-    "https://images.unsplash.com/photo-1675247488725-22d1b78e75db?w=2880&q=90&auto=format&fit=crop",
-  trust: "https://images.unsplash.com/photo-1762765684673-d22ece602b10?w=2880&q=90&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1720712013231-a1f33b90f9f6?w=2880&q=90&auto=format&fit=crop",
+  trust:
+    "https://images.unsplash.com/photo-1758825178518-ca48833a6c57?w=2880&q=90&auto=format&fit=crop",
 };
 
 const FADE_MS_DEFAULT = 2200;

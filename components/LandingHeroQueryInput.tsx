@@ -2,14 +2,10 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-const PLACEHOLDER_PREFIX = "Ask Nyra for ";
-
 const PLACEHOLDER_EXAMPLES = [
-  "80 guests in Miami, modern, under $25k",
-  "a garden venue in Toronto for 120 guests",
-  "a beachfront ceremony space in Miami",
-  "an industrial loft for 70 guests",
-  "a South Asian wedding venue with outdoor space",
+  "Plan a 3-day wedding in Miami for 80 guests",
+  "I want something modern, outdoors, under $40k",
+  "Help me plan a Hindu + Western wedding weekend",
 ] as const;
 
 function randomInRange(min: number, max: number): number {
@@ -39,19 +35,6 @@ function SendArrowIcon({ className }: { className?: string }) {
         strokeWidth="1.75"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function PlusDecorIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M12 6.75v10.5M6.75 12h10.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
       />
     </svg>
   );
@@ -161,7 +144,7 @@ export function LandingHeroQueryInput({
 
   const showFake = value.length === 0;
 
-  const suffixOverlay = reduceMotion
+  const placeholderOverlayText = reduceMotion
     ? PLACEHOLDER_EXAMPLES[0]
     : displayedPlaceholderText;
 
@@ -171,18 +154,11 @@ export function LandingHeroQueryInput({
     >
       <div className="nyra-landing-composer-ring">
         <div
-          className="nyra-landing-composer flex min-h-[72px] items-center gap-1.5 rounded-[1.6875rem] border border-transparent bg-chat-raised px-2.5 py-2 sm:min-h-[80px] sm:gap-2 sm:px-3 sm:py-2.5"
+          className="nyra-landing-glass-header nyra-landing-composer flex min-h-[72px] items-center gap-2 rounded-[1.6875rem] py-2 pl-4 pr-2.5 sm:min-h-[80px] sm:py-2.5 sm:pl-5 sm:pr-3"
         >
-          <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-chat-text-muted/45 sm:h-11 sm:w-11"
-            aria-hidden
-          >
-            <PlusDecorIcon className="h-5 w-5" />
-          </span>
-
           <div className="relative min-h-[52px] min-w-0 flex-1 sm:min-h-[56px]">
             <label htmlFor={id} className="sr-only">
-              Message Nyra with your venue search
+              Message Nyra with what you want to plan
             </label>
             <input
               id={id}
@@ -195,20 +171,17 @@ export function LandingHeroQueryInput({
             />
             {showFake ? (
               <div
-                className="pointer-events-none absolute inset-y-0 left-0 right-1 z-[5] flex items-center overflow-hidden sm:right-2"
+                className="pointer-events-none absolute inset-y-0 left-0 right-1 z-[5] flex items-center sm:right-2"
                 aria-hidden
               >
                 <div
-                  className="flex min-h-[1.25rem] min-w-0 max-w-full items-center text-left text-[16px] leading-[1.35] tracking-[-0.01em] text-chat-text-muted"
+                  className="min-h-[1.25rem] min-w-0 flex-1 text-left text-[16px] leading-[1.35] tracking-[-0.01em] text-chat-text-secondary whitespace-normal break-words"
                   data-example-index={reduceMotion ? 0 : currentExampleIndex}
                   data-deleting={
                     reduceMotion ? "false" : isDeleting ? "true" : "false"
                   }
                 >
-                  <span className="shrink-0 whitespace-pre text-chat-text-muted/85">
-                    {PLACEHOLDER_PREFIX}
-                  </span>
-                  <span className="min-w-0 truncate">{suffixOverlay}</span>
+                  {placeholderOverlayText}
                   {!reduceMotion ? <span className="nyra-hero-query-caret" /> : null}
                 </div>
               </div>
