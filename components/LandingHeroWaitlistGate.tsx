@@ -9,13 +9,29 @@ import {
   type FormEvent,
 } from "react";
 
+import { usePrefersReducedMotion } from "@/components/AssistantStreamedText";
 import { LandingHeroQueryInput } from "@/components/LandingHeroQueryInput";
+
+const THINKING_LINES = [
+  "Finding venues that match your vision…",
+  "Checking availability and pricing…",
+  "Matching vendors to your style…",
+] as const;
+
+/** Total time before the waitlist modal opens (ms). */
+const THINKING_DURATION_MIN_MS = 1500;
+const THINKING_DURATION_MAX_MS = 2500;
+const THINKING_LINE_ROTATE_MS = 700;
+const THINKING_DURATION_REDUCED_MS = 450;
 
 export function LandingHeroWaitlistGate() {
   const titleId = useId();
   const descriptionId = useId();
   const emailFieldId = useId();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
+  const [thinkingActive, setThinkingActive] = useState(false);
+  const [thinkingLineIndex, setThinkingLineIndex] = useState(0);
   const [waitlistOpen, setWaitlistOpen] = useState(false);
   /** Prompt from the hero form, stored when opening the waitlist modal (no navigation). */
   const [storedPrompt, setStoredPrompt] = useState("");
@@ -36,6 +52,11 @@ export function LandingHeroWaitlistGate() {
     setWaitlistError(null);
   }, []);
 
+  const dismissThinking = useCallback(() => {
+    setThinkingActive(false);
+    setThinkingLineIndex(0);
+  }, []);
+
   const handleHeroSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -45,7 +66,8 @@ export function LandingHeroWaitlistGate() {
 
     setStoredPrompt(trimmed);
     setWaitlistPhase("form");
-    setWaitlistOpen(true);
+    setThinkingLineIndex(0);
+    setThinkingActive(true);
   };
 
   const handleJoinWaitlist = useCallback(async () => {
@@ -91,14 +113,37 @@ export function LandingHeroWaitlistGate() {
   }, [email, storedPrompt]);
 
   useEffect(() => {
-    if (!waitlistOpen) return;
+    if (thinkingActive) {
+      const totalMs = prefersReducedMotion
+        ? THINKING_DURATION_REDUCED_MS
+        : THINKING_DURATION_MIN_MS +
+          Math.random() * (THINKING_DURATION_MAX_MS - THINKING_DURATION_MIN_MS);
+      const id = window.setTimeout(() => {
+        setThinkingActive(false);
+        setThinkingLineIndex(0);
+        setWaitlistOpen(true);
+      }, totalMs);
+      return () => window.clearTimeout(id);
+    }
+  }, [thinkingActive, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (!thinkingActive || prefersReducedMotion) return;
+    const id = window.setInterval(() => {
+      setThinkingLineIndex((i) => (i + 1) % THINKING_LINES.length);
+    }, THINKING_LINE_ROTATE_MS);
+    return () => window.clearInterval(id);
+  }, [thinkingActive, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (!waitlistOpen && !thinkingActive) return;
 
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prevOverflow;
     };
-  }, [waitlistOpen]);
+  }, [waitlistOpen, thinkingActive]);
 
   useEffect(() => {
     if (!waitlistOpen || waitlistPhase !== "form") return;
@@ -121,6 +166,19 @@ export function LandingHeroWaitlistGate() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [waitlistOpen, closeWaitlistModal]);
 
+  useEffect(() => {
+    if (!thinkingActive) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        dismissThinking();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [thinkingActive, dismissThinking]);
+
   return (
     <>
       <form
@@ -129,6 +187,30 @@ export function LandingHeroWaitlistGate() {
       >
         <LandingHeroQueryInput id="landing-query" name="query" />
       </form>
+
+      {thinkingActive ? (
+        <div
+          className="fixed inset-0 z-[79] flex items-end justify-center py-5 sm:items-center sm:p-6"
+          role="presentation"
+        >
+          <button
+            type="button"
+            aria-label="Cancel"
+            className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+            onClick={dismissThinking}
+          />
+          <div
+            role="status"
+            aria-live="polite"
+            aria-busy="true"
+            className="relative z-[1] mx-auto w-full max-w-[min(420px,100%)] rounded-t-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:max-w-lg sm:rounded-2xl sm:px-7 sm:pb-7 sm:pt-6"
+          >
+            <p className="text-center text-[15px] leading-snug tracking-[-0.01em] text-chat-text-primary">
+              {THINKING_LINES[thinkingLineIndex]}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {waitlistOpen ? (
         <div
@@ -180,7 +262,7 @@ export function LandingHeroWaitlistGate() {
                   id={descriptionId}
                   className="mt-2 text-[15px] leading-snug text-chat-text-secondary"
                 >
-                  We&apos;ll reach out when Nyra is ready
+                  We&apos;ll send your matches as soon as Nyra opens access.
                 </p>
               </>
             ) : (
@@ -189,13 +271,14 @@ export function LandingHeroWaitlistGate() {
                   id={titleId}
                   className="pr-10 text-lg font-semibold leading-[1.2] tracking-[-0.03em] text-chat-text-primary"
                 >
-                  Join the Nyra waitlist
+                  Your matches are ready
                 </h2>
                 <p
                   id={descriptionId}
                   className="mt-2 text-[15px] leading-snug text-chat-text-secondary"
                 >
-                  Get early access to Nyra.
+                  Enter your email to unlock your results and see venues and
+                  vendors that fit your vision.
                 </p>
 
                 <div className="mt-4">
@@ -236,7 +319,7 @@ export function LandingHeroWaitlistGate() {
                     disabled={waitlistSubmitting}
                     className="nyra-btn-primary w-full"
                   >
-                    {waitlistSubmitting ? "Joining…" : "Join waitlist"}
+                    {waitlistSubmitting ? "Unlocking…" : "Unlock my results"}
                   </button>
                 </div>
               </>
