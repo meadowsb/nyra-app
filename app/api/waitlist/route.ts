@@ -1,17 +1,12 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
-import path from "path";
-
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 
-const WAITLIST_PATH = path.join(process.cwd(), "data", "waitlist.json");
-
-type WaitlistEntry = {
-  email: string;
-  prompt: string;
-  createdAt: string;
-};
-
-const memoryStore: WaitlistEntry[] = [];
+function getSupabase(): SupabaseClient | null {
+  const url = process.env.SUPABASE_URL?.trim();
+  const anonKey = process.env.SUPABASE_ANON_KEY?.trim();
+  if (!url || !anonKey) return null;
+  return createClient(url, anonKey);
+}
 
 function isValidEmail(email: string): boolean {
   if (!email || email.length > 320) return false;
@@ -24,27 +19,6 @@ function escapeHtml(text: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-async function persistEntry(entry: WaitlistEntry): Promise<void> {
-  memoryStore.push(entry);
-  console.log("[waitlist]", JSON.stringify(entry));
-
-  try {
-    await mkdir(path.dirname(WAITLIST_PATH), { recursive: true });
-    let existing: WaitlistEntry[] = [];
-    try {
-      const raw = await readFile(WAITLIST_PATH, "utf8");
-      existing = JSON.parse(raw) as WaitlistEntry[];
-      if (!Array.isArray(existing)) existing = [];
-    } catch {
-      existing = [];
-    }
-    existing.push(entry);
-    await writeFile(WAITLIST_PATH, JSON.stringify(existing, null, 2), "utf8");
-  } catch (err) {
-    console.error("[waitlist] failed to persist to file", err);
-  }
 }
 
 export async function POST(request: Request) {
@@ -81,13 +55,23 @@ export async function POST(request: Request) {
     prompt = rawPrompt.trim().slice(0, 8000);
   }
 
-  const entry: WaitlistEntry = {
+  const supabase = getSupabase();
+  if (!supabase) {
+    console.error("[waitlist] SUPABASE_URL or SUPABASE_ANON_KEY missing");
+    return Response.json({ error: "Unable to save signup" }, { status: 503 });
+  }
+
+  const { error: insertError } = await supabase.from("waitlist").insert({
     email,
     prompt,
-    createdAt: new Date().toISOString(),
-  };
+  });
 
-  await persistEntry(entry);
+  if (insertError) {
+    console.error("[waitlist] Supabase insert failed", insertError);
+    return Response.json({ error: "Unable to save signup" }, { status: 500 });
+  }
+
+  console.log("[waitlist]", JSON.stringify({ email, prompt }));
 
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
