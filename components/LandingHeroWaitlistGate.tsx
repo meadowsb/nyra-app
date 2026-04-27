@@ -23,6 +23,8 @@ export function LandingHeroWaitlistGate() {
   const [waitlistPhase, setWaitlistPhase] = useState<"form" | "success">(
     "form"
   );
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
+  const [waitlistError, setWaitlistError] = useState<string | null>(null);
 
   const emailInputRef = useRef<HTMLInputElement>(null);
 
@@ -30,6 +32,8 @@ export function LandingHeroWaitlistGate() {
     setWaitlistOpen(false);
     setEmail("");
     setWaitlistPhase("form");
+    setWaitlistSubmitting(false);
+    setWaitlistError(null);
   }, []);
 
   const handleHeroSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -44,14 +48,47 @@ export function LandingHeroWaitlistGate() {
     setWaitlistOpen(true);
   };
 
-  const handleJoinWaitlist = useCallback(() => {
+  const handleJoinWaitlist = useCallback(async () => {
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !trimmedEmail.includes("@")) {
       emailInputRef.current?.focus();
       return;
     }
-    setWaitlistPhase("success");
-  }, [email]);
+
+    setWaitlistError(null);
+    setWaitlistSubmitting(true);
+
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: trimmedEmail,
+          prompt: storedPrompt,
+        }),
+      });
+
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        success?: boolean;
+      };
+
+      if (!res.ok) {
+        setWaitlistError(
+          typeof data.error === "string"
+            ? data.error
+            : "Something went wrong. Please try again."
+        );
+        return;
+      }
+
+      setWaitlistPhase("success");
+    } catch {
+      setWaitlistError("Something went wrong. Please try again.");
+    } finally {
+      setWaitlistSubmitting(false);
+    }
+  }, [email, storedPrompt]);
 
   useEffect(() => {
     if (!waitlistOpen) return;
@@ -137,19 +174,14 @@ export function LandingHeroWaitlistGate() {
                   id={titleId}
                   className="pr-10 text-lg font-semibold leading-[1.2] tracking-[-0.03em] text-chat-text-primary"
                 >
-                  You&apos;re on the list
+                  You&apos;re on the list 💌
                 </h2>
                 <p
                   id={descriptionId}
                   className="mt-2 text-[15px] leading-snug text-chat-text-secondary"
                 >
-                  Thanks—we&apos;ll email you when Nyra opens up.
+                  We&apos;ll reach out when Nyra is ready
                 </p>
-                {storedPrompt ? (
-                  <p className="mt-3 text-[14px] leading-snug text-chat-text-muted">
-                    We saved your planning note for when you get access.
-                  </p>
-                ) : null}
               </>
             ) : (
               <>
@@ -182,18 +214,29 @@ export function LandingHeroWaitlistGate() {
                     inputMode="email"
                     placeholder="you@example.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (waitlistError) setWaitlistError(null);
+                    }}
+                    disabled={waitlistSubmitting}
                     className="w-full rounded-xl border border-white/[0.12] bg-black/20 px-4 py-3 text-[15px] leading-snug tracking-[-0.01em] text-chat-text-primary outline-none placeholder:text-chat-text-muted/80 focus-visible:ring-2 focus-visible:ring-[var(--nyra-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(20,20,25,0.96)]"
                   />
                 </div>
+
+                {waitlistError ? (
+                  <p className="mt-3 text-[14px] leading-snug text-[#f87171]">
+                    {waitlistError}
+                  </p>
+                ) : null}
 
                 <div className="mt-5">
                   <button
                     type="button"
                     onClick={handleJoinWaitlist}
+                    disabled={waitlistSubmitting}
                     className="nyra-btn-primary w-full"
                   >
-                    Join waitlist
+                    {waitlistSubmitting ? "Joining…" : "Join waitlist"}
                   </button>
                 </div>
               </>
