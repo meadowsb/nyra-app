@@ -1,4 +1,4 @@
-const OVERLAY_PREP_MS = 200;
+const OVERLAY_PREP_MS = 250;
 
 /**
  * Blur focused fields and wait for iOS keyboard to dismiss before showing a

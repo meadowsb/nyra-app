@@ -8,8 +8,10 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type FormEvent,
 } from "react";
+import { createPortal } from "react-dom";
 
 import { usePrefersReducedMotion } from "@/components/AssistantStreamedText";
 import { LandingHeroQueryInput } from "@/components/LandingHeroQueryInput";
@@ -174,6 +176,13 @@ export function LandingHeroWaitlistGate() {
   const emailInputRef = useRef<HTMLInputElement>(null);
   const heroQueryInputRef = useRef<HTMLInputElement>(null);
   const prevBodyOverflowRef = useRef<string | null>(null);
+  const portalReady = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+
+  const overlayOpen = thinkingActive || waitlistOpen;
 
   const closeWaitlistModal = useCallback(() => {
     setWaitlistOpen(false);
@@ -307,18 +316,11 @@ export function LandingHeroWaitlistGate() {
     if (!thinkingActive) return;
 
     const openModalAfterThinking = () => {
-      void (async () => {
-        await prepareForOverlay([
-          heroQueryInputRef.current,
-          firstNameInputRef.current,
-          emailInputRef.current,
-        ]);
-        setThinkingActive(false);
-        setThinkingPhaseIndex(0);
-        setThinkingSequence([]);
-        setWaitlistEntrySource("prompt");
-        setWaitlistOpen(true);
-      })();
+      setThinkingActive(false);
+      setThinkingPhaseIndex(0);
+      setThinkingSequence([]);
+      setWaitlistEntrySource("prompt");
+      setWaitlistOpen(true);
     };
 
     if (prefersReducedMotion) {
@@ -346,7 +348,7 @@ export function LandingHeroWaitlistGate() {
   }, [thinkingActive, prefersReducedMotion, sequenceForTiming]);
 
   useEffect(() => {
-    const locked = waitlistOpen || thinkingActive;
+    const locked = overlayOpen;
     if (locked) {
       if (prevBodyOverflowRef.current === null) {
         prevBodyOverflowRef.current = document.body.style.overflow;
@@ -356,7 +358,7 @@ export function LandingHeroWaitlistGate() {
       document.body.style.overflow = prevBodyOverflowRef.current;
       prevBodyOverflowRef.current = null;
     }
-  }, [waitlistOpen, thinkingActive]);
+  }, [overlayOpen]);
 
   useEffect(() => {
     return () => {
@@ -384,30 +386,17 @@ export function LandingHeroWaitlistGate() {
   }, [openWaitlistDirect]);
 
   useEffect(() => {
-    if (!waitlistOpen) return;
+    if (!overlayOpen) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        closeWaitlistModal();
-      }
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      if (thinkingActive) dismissThinking();
+      else closeWaitlistModal();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [waitlistOpen, closeWaitlistModal]);
-
-  useEffect(() => {
-    if (!thinkingActive) return;
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        dismissThinking();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [thinkingActive, dismissThinking]);
+  }, [overlayOpen, thinkingActive, dismissThinking, closeWaitlistModal]);
 
   const crossfadeSec = prefersReducedMotion ? 0 : THINKING_CROSSFADE_MS / 1000;
   const progressDurationSec = prefersReducedMotion
@@ -423,241 +412,222 @@ export function LandingHeroWaitlistGate() {
         <LandingHeroQueryInput ref={heroQueryInputRef} id="landing-query" name="query" />
       </form>
 
-      {thinkingActive ? (
-        <div
-          className="fixed inset-0 z-[100] flex h-[100dvh] min-h-[100dvh] w-full items-center justify-center px-4 py-6"
-          role="presentation"
-        >
-          <button
-            type="button"
-            aria-label="Cancel"
-            className="absolute inset-0 z-0 bg-black/55 backdrop-blur-[2px]"
-            onClick={dismissThinking}
-          />
-          <div
-            role="status"
-            aria-live="polite"
-            aria-busy="true"
-            className="relative z-[81] mx-auto w-full max-w-md max-h-[calc(100dvh-48px)] overflow-y-auto rounded-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:max-w-[420px] sm:px-7 sm:pb-7 sm:pt-6"
-          >
-            <p className="sr-only">
-              {sequenceForTiming[thinkingPhaseIndex] ?? sequenceForTiming[0]}
-            </p>
-            <div className="relative mx-auto min-h-[3.75rem] w-full max-w-[36ch]">
-              {sequenceForTiming.map((line, i) => (
-                <motion.p
-                  key={i}
-                  aria-hidden
-                  className="absolute inset-x-0 top-0 text-center text-[15px] leading-snug tracking-[-0.01em] text-chat-text-primary"
-                  animate={{
-                    opacity:
-                      prefersReducedMotion && i === 0
-                        ? 1
-                        : prefersReducedMotion
-                          ? 0
-                          : thinkingPhaseIndex === i
-                            ? 1
-                            : 0,
-                  }}
-                  transition={{
-                    duration: crossfadeSec,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                >
-                  {line}
-                </motion.p>
-              ))}
-            </div>
-
+      {portalReady && overlayOpen
+        ? createPortal(
             <div
-              className="mt-5 flex justify-center gap-1.5"
-              aria-hidden
+              className="nyra-chat-shell fixed inset-0 z-[9999] flex h-[100dvh] min-h-[100dvh] w-full items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+              role="presentation"
             >
-              {[0, 1, 2].map((d) => (
-                <motion.span
-                  key={d}
-                  className="size-1.5 rounded-full bg-white/[0.42]"
-                  animate={
-                    prefersReducedMotion
-                      ? { opacity: 0.45 }
-                      : {
-                          opacity: [0.28, 1, 0.28],
-                          scale: [1, 1.18, 1],
-                        }
-                  }
-                  transition={
-                    prefersReducedMotion
-                      ? { duration: 0 }
-                      : {
-                          duration: 1.18,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: d * 0.15,
-                        }
-                  }
-                />
-              ))}
-            </div>
-
-            <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.07]">
-              <motion.div
-                className="h-full origin-left rounded-full bg-[color-mix(in_srgb,var(--nyra-accent)_78%,white)] shadow-[0_0_12px_color-mix(in_srgb,var(--nyra-accent)_35%,transparent)]"
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{
-                  duration: progressDurationSec,
-                  ease: prefersReducedMotion ? "easeOut" : "linear",
-                }}
+              <button
+                type="button"
+                aria-label={thinkingActive ? "Cancel" : "Close waitlist dialog"}
+                className="absolute inset-0 z-0"
+                onClick={thinkingActive ? dismissThinking : closeWaitlistModal}
               />
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {waitlistOpen ? (
-        <div
-          className="fixed inset-0 z-[101] flex h-[100dvh] min-h-[100dvh] w-full items-center justify-center px-4 py-6"
-          role="presentation"
-        >
-          <button
-            type="button"
-            aria-label="Close waitlist dialog"
-            className="absolute inset-0 z-0 bg-black/55 backdrop-blur-[2px]"
-            onClick={closeWaitlistModal}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            aria-describedby={
-              descriptionId
-            }
-            className="relative z-[81] mx-auto w-full max-w-md max-h-[calc(100dvh-48px)] overflow-y-auto rounded-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:max-w-[420px] sm:px-7 sm:pb-7 sm:pt-6"
-          >
-            <button
-              type="button"
-              aria-label="Close waitlist dialog"
-              onClick={closeWaitlistModal}
-              className="absolute right-3 top-3 rounded-lg p-1.5 text-chat-text-muted opacity-55 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nyra-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(20,20,25,0.96)]"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                aria-hidden
-                className="size-5"
-              >
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
-            </button>
-
-            {waitlistPhase === "success" ? (
-              <>
-                <h2
-                  id={titleId}
-                  className="pr-10 text-lg font-semibold leading-[1.2] tracking-[-0.03em] text-chat-text-primary"
+              {thinkingActive ? (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  aria-busy="true"
+                  className="relative z-10 w-full max-w-md max-h-[calc(100dvh-32px)] overflow-y-auto rounded-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:px-7 sm:pb-7 sm:pt-6"
                 >
-                  You&apos;re on the list ❤️
-                </h2>
-                <p
-                  id={descriptionId}
-                  className="mt-2 text-[15px] leading-snug text-chat-text-secondary"
-                >
-                  We&apos;ll let you know as soon as Nyra is ready.
-                </p>
-              </>
-            ) : (
-              <>
-                <h2
-                  id={titleId}
-                  className="pr-10 text-lg font-semibold leading-[1.2] tracking-[-0.03em] text-chat-text-primary"
-                >
-                  {waitlistEntrySource === "prompt"
-                    ? "We\u2019ve got your request"
-                    : "Join the waitlist"}
-                </h2>
-                <p
-                  id={descriptionId}
-                  className="mt-2 text-[15px] leading-snug text-chat-text-secondary"
-                >
-                  {waitlistEntrySource === "prompt"
-                    ? "Enter your first name and email, and we\u2019ll follow up as Nyra becomes available."
-                    : "Be among the first to try Nyra when it launches."}
-                </p>
-
-                <div className="mt-4">
-                  <label
-                    htmlFor={firstNameFieldId}
-                    className="sr-only"
-                  >
-                    First name
-                  </label>
-                  <input
-                    ref={firstNameInputRef}
-                    id={firstNameFieldId}
-                    type="text"
-                    name="waitlist-first-name"
-                    autoComplete="given-name"
-                    placeholder="First name"
-                    value={firstName}
-                    onChange={(e) => {
-                      setFirstName(e.target.value);
-                      if (waitlistError) setWaitlistError(null);
-                    }}
-                    disabled={waitlistSubmitting}
-                    className="w-full rounded-xl border border-white/[0.12] bg-black/20 px-4 py-3 text-[15px] leading-snug tracking-[-0.01em] text-chat-text-primary outline-none placeholder:text-chat-text-muted/80 focus-visible:ring-2 focus-visible:ring-[var(--nyra-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(20,20,25,0.96)]"
-                  />
-                </div>
-
-                <div className="mt-3">
-                  <label
-                    htmlFor={emailFieldId}
-                    className="sr-only"
-                  >
-                    Email address
-                  </label>
-                  <input
-                    ref={emailInputRef}
-                    id={emailFieldId}
-                    type="email"
-                    name="waitlist-email"
-                    autoComplete="email"
-                    inputMode="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (waitlistError) setWaitlistError(null);
-                    }}
-                    disabled={waitlistSubmitting}
-                    className="w-full rounded-xl border border-white/[0.12] bg-black/20 px-4 py-3 text-[15px] leading-snug tracking-[-0.01em] text-chat-text-primary outline-none placeholder:text-chat-text-muted/80 focus-visible:ring-2 focus-visible:ring-[var(--nyra-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(20,20,25,0.96)]"
-                  />
-                </div>
-
-                {waitlistError ? (
-                  <p className="mt-3 text-[14px] leading-snug text-[#f87171]">
-                    {waitlistError}
+                  <p className="sr-only">
+                    {sequenceForTiming[thinkingPhaseIndex] ?? sequenceForTiming[0]}
                   </p>
-                ) : null}
+                  <div className="relative mx-auto min-h-[3.75rem] w-full max-w-[36ch]">
+                    {sequenceForTiming.map((line, i) => (
+                      <motion.p
+                        key={i}
+                        aria-hidden
+                        className="absolute inset-x-0 top-0 text-center text-[15px] leading-snug tracking-[-0.01em] text-chat-text-primary"
+                        animate={{
+                          opacity:
+                            prefersReducedMotion && i === 0
+                              ? 1
+                              : prefersReducedMotion
+                                ? 0
+                                : thinkingPhaseIndex === i
+                                  ? 1
+                                  : 0,
+                        }}
+                        transition={{
+                          duration: crossfadeSec,
+                          ease: [0.22, 1, 0.36, 1],
+                        }}
+                      >
+                        {line}
+                      </motion.p>
+                    ))}
+                  </div>
 
-                <div className="mt-5">
+                  <div className="mt-5 flex justify-center gap-1.5" aria-hidden>
+                    {[0, 1, 2].map((d) => (
+                      <motion.span
+                        key={d}
+                        className="size-1.5 rounded-full bg-white/[0.42]"
+                        animate={
+                          prefersReducedMotion
+                            ? { opacity: 0.45 }
+                            : {
+                                opacity: [0.28, 1, 0.28],
+                                scale: [1, 1.18, 1],
+                              }
+                        }
+                        transition={
+                          prefersReducedMotion
+                            ? { duration: 0 }
+                            : {
+                                duration: 1.18,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                                delay: d * 0.15,
+                              }
+                        }
+                      />
+                    ))}
+                  </div>
+
+                  <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.07]">
+                    <motion.div
+                      className="h-full origin-left rounded-full bg-[color-mix(in_srgb,var(--nyra-accent)_78%,white)] shadow-[0_0_12px_color-mix(in_srgb,var(--nyra-accent)_35%,transparent)]"
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      transition={{
+                        duration: progressDurationSec,
+                        ease: prefersReducedMotion ? "easeOut" : "linear",
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby={titleId}
+                  aria-describedby={descriptionId}
+                  className="relative z-10 w-full max-w-md max-h-[calc(100dvh-32px)] overflow-y-auto rounded-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:px-7 sm:pb-7 sm:pt-6"
+                >
                   <button
                     type="button"
-                    onClick={handleJoinWaitlist}
-                    disabled={waitlistSubmitting}
-                    className="nyra-btn-primary w-full"
+                    aria-label="Close waitlist dialog"
+                    onClick={closeWaitlistModal}
+                    className="absolute right-3 top-3 rounded-lg p-1.5 text-chat-text-muted opacity-55 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nyra-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(20,20,25,0.96)]"
                   >
-                    {waitlistSubmitting ? "Sending…" : "Get early access"}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      aria-hidden
+                      className="size-5"
+                    >
+                      <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
                   </button>
+
+                  {waitlistPhase === "success" ? (
+                    <>
+                      <h2
+                        id={titleId}
+                        className="pr-10 text-lg font-semibold leading-[1.2] tracking-[-0.03em] text-chat-text-primary"
+                      >
+                        You&apos;re on the list ❤️
+                      </h2>
+                      <p
+                        id={descriptionId}
+                        className="mt-2 text-[15px] leading-snug text-chat-text-secondary"
+                      >
+                        We&apos;ll let you know as soon as Nyra is ready.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h2
+                        id={titleId}
+                        className="pr-10 text-lg font-semibold leading-[1.2] tracking-[-0.03em] text-chat-text-primary"
+                      >
+                        {waitlistEntrySource === "prompt"
+                          ? "We\u2019ve got your request"
+                          : "Join the waitlist"}
+                      </h2>
+                      <p
+                        id={descriptionId}
+                        className="mt-2 text-[15px] leading-snug text-chat-text-secondary"
+                      >
+                        {waitlistEntrySource === "prompt"
+                          ? "Enter your first name and email, and we\u2019ll follow up as Nyra becomes available."
+                          : "Be among the first to try Nyra when it launches."}
+                      </p>
+
+                      <div className="mt-4">
+                        <label htmlFor={firstNameFieldId} className="sr-only">
+                          First name
+                        </label>
+                        <input
+                          ref={firstNameInputRef}
+                          id={firstNameFieldId}
+                          type="text"
+                          name="waitlist-first-name"
+                          autoComplete="given-name"
+                          placeholder="First name"
+                          value={firstName}
+                          onChange={(e) => {
+                            setFirstName(e.target.value);
+                            if (waitlistError) setWaitlistError(null);
+                          }}
+                          disabled={waitlistSubmitting}
+                          className="w-full rounded-xl border border-white/[0.12] bg-black/20 px-4 py-3 text-[15px] leading-snug tracking-[-0.01em] text-chat-text-primary outline-none placeholder:text-chat-text-muted/80 focus-visible:ring-2 focus-visible:ring-[var(--nyra-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(20,20,25,0.96)]"
+                        />
+                      </div>
+
+                      <div className="mt-3">
+                        <label htmlFor={emailFieldId} className="sr-only">
+                          Email address
+                        </label>
+                        <input
+                          ref={emailInputRef}
+                          id={emailFieldId}
+                          type="email"
+                          name="waitlist-email"
+                          autoComplete="email"
+                          inputMode="email"
+                          placeholder="you@example.com"
+                          value={email}
+                          onChange={(e) => {
+                            setEmail(e.target.value);
+                            if (waitlistError) setWaitlistError(null);
+                          }}
+                          disabled={waitlistSubmitting}
+                          className="w-full rounded-xl border border-white/[0.12] bg-black/20 px-4 py-3 text-[15px] leading-snug tracking-[-0.01em] text-chat-text-primary outline-none placeholder:text-chat-text-muted/80 focus-visible:ring-2 focus-visible:ring-[var(--nyra-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(20,20,25,0.96)]"
+                        />
+                      </div>
+
+                      {waitlistError ? (
+                        <p className="mt-3 text-[14px] leading-snug text-[#f87171]">
+                          {waitlistError}
+                        </p>
+                      ) : null}
+
+                      <div className="mt-5">
+                        <button
+                          type="button"
+                          onClick={handleJoinWaitlist}
+                          disabled={waitlistSubmitting}
+                          className="nyra-btn-primary w-full"
+                        >
+                          {waitlistSubmitting ? "Sending…" : "Get early access"}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
-              </>
-            )}
-          </div>
-        </div>
-      ) : null}
+              )}
+            </div>,
+            document.body
+          )
+        : null}
     </>
   );
 }
