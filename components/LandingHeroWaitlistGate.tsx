@@ -142,6 +142,10 @@ function isValidEmail(email: string): boolean {
 
 type WaitlistEntrySource = "prompt" | "cta";
 
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+}
+
 export function LandingHeroWaitlistGate() {
   const titleId = useId();
   const descriptionId = useId();
@@ -188,6 +192,12 @@ export function LandingHeroWaitlistGate() {
   }, []);
 
   const openWaitlistDirect = useCallback(async () => {
+    try {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      // ignore (older browsers)
+    }
+    await sleep(520);
     await prepareForOverlay([
       heroQueryInputRef.current,
       firstNameInputRef.current,
@@ -273,13 +283,13 @@ export function LandingHeroWaitlistGate() {
         return;
       }
 
+      // Keep the modal stable while iOS dismisses the keyboard.
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
       firstNameInputRef.current?.blur();
       emailInputRef.current?.blur();
-      await prepareForOverlay([
-        heroQueryInputRef.current,
-        firstNameInputRef.current,
-        emailInputRef.current,
-      ]);
+      await sleep(250);
       setWaitlistPhase("success");
     } catch {
       setWaitlistError("Something went wrong. Please try again.");
