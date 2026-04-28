@@ -3,22 +3,17 @@ import type { ReactNode } from "react";
 import { LandingHowItWorksSection } from "@/components/LandingHowItWorksSection";
 import { LandingScrollScrubbedExampleChat } from "@/components/LandingScrollScrubbedExampleChat";
 import { LandingHeroBackgroundMedia } from "@/components/LandingHeroBackgroundMedia";
+import { LandingWaitlistDirectCta } from "@/components/LandingWaitlistDirectCta";
 import { LandingHeroWaitlistGate } from "@/components/LandingHeroWaitlistGate";
 import { LandingRevealOnView } from "@/components/LandingRevealOnView";
 import { LandingScrollVenueBackdrop } from "@/components/LandingScrollVenueBackdrop";
-
-const trustStatements = [
-  "Designed for couples planning real events",
-  "Skip hours of back-and-forth",
-  "Short write-ups you can skim between everything else",
-] as const;
 
 const testimonials = [
   {
     quote:
       "We stopped living in our inboxes. Nyra’s shortlist felt intentional, not like a generic list from Google.",
     name: "Jordan & Sam",
-    detail: "Miami, FL",
+    detail: "Toronto, Ontario",
   },
   {
     quote:
@@ -74,14 +69,14 @@ export default function Home() {
         >
           <LandingRevealOnView className="mx-auto max-w-[1200px] px-2 py-20 max-lg:pb-12 sm:px-3 sm:py-24 lg:py-28">
             <header className="nyra-landing-glass-header nyra-landing-section-head-card nyra-landing-reveal-head mx-auto max-w-2xl text-center">
-              <SectionLabel>Your results</SectionLabel>
-              <h2 className="nyra-landing-section-headline">Your wedding, organized in one place</h2>
+              <SectionLabel>YOUR RESULTS</SectionLabel>
+              <h2 className="nyra-landing-section-headline">See what Nyra brings back</h2>
               <p className="nyra-landing-section-sub mx-auto max-w-md">
-                All your options, pricing, and next steps — without the chaos of managing it yourself
+                A clear view of options, details, and next steps.
               </p>
             </header>
 
-            <div className="nyra-landing-section-head-to-content">
+            <div className="nyra-landing-section-head-to-content nyra-landing-section-head-to-example-chat">
               <LandingScrollScrubbedExampleChat />
             </div>
           </LandingRevealOnView>
@@ -123,7 +118,7 @@ export default function Home() {
           </LandingRevealOnView>
         </section>
 
-        {/* Trust — quiet reassurance above the footer */}
+        {/* Final CTA */}
         <section
           id="landing-section-trust"
           data-landing-bg="trust"
@@ -133,23 +128,17 @@ export default function Home() {
             <div
               className="nyra-landing-glass-content nyra-landing-reveal-head mx-auto max-w-2xl rounded-2xl px-6 py-10 sm:px-10 sm:py-11"
               role="region"
-              aria-label="How Nyra approaches planning"
+              aria-label="Get early access"
             >
-              <ul className="flex flex-col gap-5 text-center sm:gap-6">
-                {trustStatements.map((line, index) => (
-                  <li key={line}>
-                    {index > 0 ? (
-                      <div
-                        aria-hidden
-                        className="mx-auto mb-5 h-px max-w-[12rem] bg-gradient-to-r from-transparent via-white/10 to-transparent sm:mb-6"
-                      />
-                    ) : null}
-                    <p className="text-[15px] leading-relaxed tracking-[-0.01em] text-chat-text-secondary">
-                      {line}
-                    </p>
-                  </li>
-                ))}
-              </ul>
+              <div className="text-center">
+                <h2 className="text-[clamp(1.5rem,3vw,2rem)] font-semibold leading-[1.12] tracking-[-0.02em] text-chat-text-primary">
+                  Get early access
+                </h2>
+                <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-chat-text-secondary">
+                  Tell us what you’re planning — we’ll follow up as Nyra becomes available
+                </p>
+                <LandingWaitlistDirectCta />
+              </div>
             </div>
           </LandingRevealOnView>
         </section>
@@ -160,43 +149,20 @@ export default function Home() {
         data-landing-bg="footer"
         className="relative z-[1] min-h-[min(36vh,22rem)] border-t border-white/[0.08] bg-transparent"
       >
-        <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-10 px-2 py-16 text-center sm:px-3 lg:flex-row lg:items-center lg:justify-between lg:gap-12 lg:py-20 lg:text-left">
-          <div className="flex max-w-xs flex-col items-center lg:max-w-none lg:items-start">
-            <p className="nyra-eyebrow nyra-landing-footer-wordmark">NYRA</p>
-            <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-chat-text-secondary">
-              Your AI wedding planner — from first idea to final decisions
-            </p>
-          </div>
-          <nav aria-label="Footer" className="w-full lg:w-auto">
-            <ul className="flex flex-col items-center gap-4 text-sm font-normal text-chat-text-muted lg:flex-row lg:flex-wrap lg:justify-end lg:gap-x-8 lg:gap-y-3">
-              <li>
-                <a
-                  href="mailto:support@nyra.com"
-                  className="transition-colors hover:text-chat-text-primary"
-                >
-                  Support
-                </a>
-              </li>
-              <li>
-                <a
-                  href="mailto:hello@nyra.com"
-                  className="transition-colors hover:text-chat-text-primary"
-                >
-                  Contact
-                </a>
-              </li>
-              <li>
-                <a href="/terms" className="transition-colors hover:text-chat-text-primary">
-                  Terms
-                </a>
-              </li>
-              <li>
-                <a href="/privacy" className="transition-colors hover:text-chat-text-primary">
+        <div className="mx-auto max-w-[1200px]">
+          <div className="mt-12 pb-10 px-6">
+            <nav aria-label="Footer">
+              <div className="flex items-center justify-center gap-6 flex-wrap text-sm text-white/60">
+                <a href="/privacy" className="hover:text-white transition">
                   Privacy
                 </a>
-              </li>
-            </ul>
-          </nav>
+                <a href="/terms" className="hover:text-white transition">
+                  Terms
+                </a>
+              </div>
+            </nav>
+            <p className="text-xs text-white/40 mt-4 text-center">© 2026 Nyra</p>
+          </div>
         </div>
       </footer>
     </div>

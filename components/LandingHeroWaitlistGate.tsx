@@ -13,6 +13,7 @@ import {
 
 import { usePrefersReducedMotion } from "@/components/AssistantStreamedText";
 import { LandingHeroQueryInput } from "@/components/LandingHeroQueryInput";
+import { NYRA_OPEN_WAITLIST_DIRECT } from "@/components/LandingWaitlistDirectCta";
 
 /** Hard cap: waitlist modal opens after this (ms). */
 const THINKING_TOTAL_MS = 2000;
@@ -129,29 +130,21 @@ function parseLandingSignals(query: string): LandingSignals {
 }
 
 function buildThinkingSequence(query: string): readonly string[] {
-  const s = parseLandingSignals(query.trim());
-  const lines: string[] = ["Understanding your vision…"];
-
-  lines.push(
-    s.location
-      ? `Exploring venues in ${s.location}…`
-      : "Finding venues that could work…"
-  );
-
-  if (s.budgetLabel) {
-    lines.push("Filtering options for your budget…");
-  }
-
-  lines.push("Matching vendors to your style…");
-  lines.push("Getting ready to match you…");
-
-  return lines;
+  void query;
+  return ["Understanding what you're planning…", "Reviewing your details…", "Almost ready…"];
 }
+
+function isValidEmail(email: string): boolean {
+  if (!email || email.length > 320) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+type WaitlistEntrySource = "prompt" | "cta";
 
 export function LandingHeroWaitlistGate() {
   const titleId = useId();
   const descriptionId = useId();
-  const successSupplementId = useId();
+  const firstNameFieldId = useId();
   const emailFieldId = useId();
   const prefersReducedMotion = usePrefersReducedMotion();
 
@@ -159,8 +152,12 @@ export function LandingHeroWaitlistGate() {
   const [thinkingSequence, setThinkingSequence] = useState<readonly string[]>([]);
   const [thinkingPhaseIndex, setThinkingPhaseIndex] = useState(0);
   const [waitlistOpen, setWaitlistOpen] = useState(false);
+  /** How the waitlist modal was opened — drives modal headline copy. */
+  const [waitlistEntrySource, setWaitlistEntrySource] =
+    useState<WaitlistEntrySource>("cta");
   /** Prompt from the hero form, stored when opening the waitlist modal (no navigation). */
   const [storedPrompt, setStoredPrompt] = useState("");
+  const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [waitlistPhase, setWaitlistPhase] = useState<"form" | "success">(
     "form"
@@ -168,10 +165,13 @@ export function LandingHeroWaitlistGate() {
   const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
   const [waitlistError, setWaitlistError] = useState<string | null>(null);
 
+  const firstNameInputRef = useRef<HTMLInputElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
 
   const closeWaitlistModal = useCallback(() => {
     setWaitlistOpen(false);
+    setWaitlistEntrySource("cta");
+    setFirstName("");
     setEmail("");
     setWaitlistPhase("form");
     setWaitlistSubmitting(false);
@@ -183,6 +183,18 @@ export function LandingHeroWaitlistGate() {
     setThinkingPhaseIndex(0);
     setThinkingSequence([]);
   }, []);
+
+  const openWaitlistDirect = useCallback(() => {
+    dismissThinking();
+    setStoredPrompt("");
+    setFirstName("");
+    setEmail("");
+    setWaitlistPhase("form");
+    setWaitlistSubmitting(false);
+    setWaitlistError(null);
+    setWaitlistEntrySource("cta");
+    setWaitlistOpen(true);
+  }, [dismissThinking]);
 
   const handleHeroSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -200,8 +212,21 @@ export function LandingHeroWaitlistGate() {
   };
 
   const handleJoinWaitlist = useCallback(async () => {
+    const trimmedFirstName = firstName.trim();
     const trimmedEmail = email.trim();
-    if (!trimmedEmail || !trimmedEmail.includes("@")) {
+
+    if (!trimmedFirstName) {
+      setWaitlistError("First name is required");
+      firstNameInputRef.current?.focus();
+      return;
+    }
+    if (!trimmedEmail) {
+      setWaitlistError("Email is required");
+      emailInputRef.current?.focus();
+      return;
+    }
+    if (!isValidEmail(trimmedEmail)) {
+      setWaitlistError("Invalid email address");
       emailInputRef.current?.focus();
       return;
     }
@@ -214,6 +239,7 @@ export function LandingHeroWaitlistGate() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          firstName: trimmedFirstName,
           email: trimmedEmail,
           prompt: storedPrompt,
         }),
@@ -239,7 +265,7 @@ export function LandingHeroWaitlistGate() {
     } finally {
       setWaitlistSubmitting(false);
     }
-  }, [email, storedPrompt]);
+  }, [email, firstName, storedPrompt]);
 
   const sequenceForTiming = useMemo(
     () => (thinkingSequence.length > 0 ? thinkingSequence : buildThinkingSequence("")),
@@ -254,6 +280,7 @@ export function LandingHeroWaitlistGate() {
         setThinkingActive(false);
         setThinkingPhaseIndex(0);
         setThinkingSequence([]);
+        setWaitlistEntrySource("prompt");
         setWaitlistOpen(true);
       }, THINKING_DURATION_REDUCED_MS);
       return () => window.clearTimeout(id);
@@ -276,6 +303,7 @@ export function LandingHeroWaitlistGate() {
         setThinkingActive(false);
         setThinkingPhaseIndex(0);
         setThinkingSequence([]);
+        setWaitlistEntrySource("prompt");
         setWaitlistOpen(true);
       }, THINKING_TOTAL_MS)
     );
@@ -299,9 +327,15 @@ export function LandingHeroWaitlistGate() {
     if (!waitlistOpen || waitlistPhase !== "form") return;
 
     queueMicrotask(() => {
-      emailInputRef.current?.focus();
+      firstNameInputRef.current?.focus();
     });
   }, [waitlistOpen, waitlistPhase]);
+
+  useEffect(() => {
+    const onOpenDirect = () => openWaitlistDirect();
+    window.addEventListener(NYRA_OPEN_WAITLIST_DIRECT, onOpenDirect);
+    return () => window.removeEventListener(NYRA_OPEN_WAITLIST_DIRECT, onOpenDirect);
+  }, [openWaitlistDirect]);
 
   useEffect(() => {
     if (!waitlistOpen) return;
@@ -450,9 +484,7 @@ export function LandingHeroWaitlistGate() {
             aria-modal="true"
             aria-labelledby={titleId}
             aria-describedby={
-              waitlistPhase === "success"
-                ? `${descriptionId} ${successSupplementId}`
-                : descriptionId
+              descriptionId
             }
             className="fixed left-1/2 top-1/2 z-[81] w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-t-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:rounded-2xl sm:px-7 sm:pb-7 sm:pt-6"
           >
@@ -482,20 +514,13 @@ export function LandingHeroWaitlistGate() {
                   id={titleId}
                   className="pr-10 text-lg font-semibold leading-[1.2] tracking-[-0.03em] text-chat-text-primary"
                 >
-                  You&apos;re on the list 💌
+                  You&apos;re on the list ❤️
                 </h2>
                 <p
                   id={descriptionId}
                   className="mt-2 text-[15px] leading-snug text-chat-text-secondary"
                 >
-                  We&apos;ll send your matches as soon as they&apos;re ready.
-                </p>
-                <p
-                  id={successSupplementId}
-                  className="mt-2 text-[15px] leading-snug text-chat-text-secondary"
-                >
-                  You&apos;ll be among the first to see venues that match your
-                  vision.
+                  We&apos;ll let you know as soon as Nyra is ready.
                 </p>
               </>
             ) : (
@@ -504,18 +529,44 @@ export function LandingHeroWaitlistGate() {
                   id={titleId}
                   className="pr-10 text-lg font-semibold leading-[1.2] tracking-[-0.03em] text-chat-text-primary"
                 >
-                  Get your matches first
+                  {waitlistEntrySource === "prompt"
+                    ? "We\u2019ve got your request"
+                    : "Join the waitlist"}
                 </h2>
                 <p
                   id={descriptionId}
                   className="mt-2 text-[15px] leading-snug text-chat-text-secondary"
                 >
-                  We&apos;re preparing venues and vendors that fit your request.
-                  Enter your email and we&apos;ll send them as soon as
-                  they&apos;re ready.
+                  {waitlistEntrySource === "prompt"
+                    ? "Enter your first name and email, and we\u2019ll follow up as Nyra becomes available."
+                    : "Be among the first to try Nyra when it launches."}
                 </p>
 
                 <div className="mt-4">
+                  <label
+                    htmlFor={firstNameFieldId}
+                    className="sr-only"
+                  >
+                    First name
+                  </label>
+                  <input
+                    ref={firstNameInputRef}
+                    id={firstNameFieldId}
+                    type="text"
+                    name="waitlist-first-name"
+                    autoComplete="given-name"
+                    placeholder="First name"
+                    value={firstName}
+                    onChange={(e) => {
+                      setFirstName(e.target.value);
+                      if (waitlistError) setWaitlistError(null);
+                    }}
+                    disabled={waitlistSubmitting}
+                    className="w-full rounded-xl border border-white/[0.12] bg-black/20 px-4 py-3 text-[15px] leading-snug tracking-[-0.01em] text-chat-text-primary outline-none placeholder:text-chat-text-muted/80 focus-visible:ring-2 focus-visible:ring-[var(--nyra-accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(20,20,25,0.96)]"
+                  />
+                </div>
+
+                <div className="mt-3">
                   <label
                     htmlFor={emailFieldId}
                     className="sr-only"

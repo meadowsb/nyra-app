@@ -8,18 +8,18 @@ import { LandingRevealOnView } from "@/components/LandingRevealOnView";
 const steps = [
   {
     kind: "details" as const,
-    title: "Tell Nyra what you're imagining",
-    body: "Share your guest count, location, style, budget, and priorities.",
+    title: "Tell us what you want",
+    body: "Guest count, location, budget, style",
   },
   {
     kind: "match" as const,
-    title: "See your plan come together",
-    body: "Get curated venues, vendors, and recommendations tailored to you.",
+    title: "We find the best options",
+    body: "Curated venues and vendors that actually fit",
   },
   {
     kind: "outreach" as const,
-    title: "We handle the back-and-forth",
-    body: "We reach out, gather pricing and availability, and bring everything back in one place.",
+    title: "We handle the outreach",
+    body: "We check availability, pricing, and details for you",
   },
 ] as const;
 
@@ -108,9 +108,9 @@ export function LandingHowItWorksSection() {
       <LandingRevealOnView className="mx-auto max-w-[1200px] px-2 py-20 sm:px-3 sm:py-24 lg:py-28">
         <div className="nyra-landing-glass-header nyra-landing-section-head-card nyra-landing-reveal-head mx-auto max-w-2xl text-center">
           <SectionLabel>How it works</SectionLabel>
-          <h2 className="nyra-landing-section-headline">Plan everything, without the chaos</h2>
+          <h2 className="nyra-landing-section-headline">No back-and-forth. No guesswork.</h2>
           <p className="nyra-landing-section-sub mx-auto max-w-md">
-            From venues to vendors to timelines — Nyra handles the back-and-forth so you don&apos;t have to.
+            We bring you real options — and get the answers you’d normally have to chase.
           </p>
         </div>
         <ol className="nyra-landing-section-head-to-content nyra-landing-reveal-stagger mx-auto grid max-w-5xl gap-5 sm:grid-cols-3 sm:items-stretch sm:gap-4 lg:gap-5">

@@ -1,25 +1,15 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 
-const PLACEHOLDER_EXAMPLES = [
-  "Plan a 3-day wedding in Miami for 80 guests",
-  "I want something modern, outdoors, under $40k",
-  "Help me plan a Hindu + Western wedding weekend",
+const EXAMPLE_PROMPTS = [
+  "Looking for a modern venue for 80 guests in Miami...",
+  "Outdoor wedding in California, ~120 people, relaxed vibe...",
+  "Small wedding in Toronto, 40 guests, elegant but simple...",
+  "Looking for a chic rooftop option with great food and easy parking...",
 ] as const;
 
-function randomInRange(min: number, max: number): number {
-  return min + Math.floor(Math.random() * (max - min + 1));
-}
-
-const TYPE_MS_MIN = 35;
-const TYPE_MS_MAX = 55;
-const DELETE_MS_MIN = 18;
-const DELETE_MS_MAX = 28;
-const PAUSE_TYPED_MS_MIN = 1200;
-const PAUSE_TYPED_MS_MAX = 1600;
-const PAUSE_BEFORE_NEXT_MS_MIN = 250;
-const PAUSE_BEFORE_NEXT_MS_MAX = 400;
+type TypingPhase = "typing" | "pause_after_typed" | "clearing" | "pause_after_cleared";
 
 function SendArrowIcon({ className }: { className?: string }) {
   return (
@@ -51,14 +41,9 @@ export function LandingHeroQueryInput({
 }) {
   const [value, setValue] = useState("");
   const [reduceMotion, setReduceMotion] = useState(false);
-  const [currentExampleIndex, setCurrentExampleIndex] = useState(0);
-  const [displayedPlaceholderText, setDisplayedPlaceholderText] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const indexRef = useRef(0);
-  const textRef = useRef("");
-  const deletingRef = useRef(false);
+  const [exampleIndex, setExampleIndex] = useState(0);
+  const [phase, setPhase] = useState<TypingPhase>("typing");
+  const [typed, setTyped] = useState("");
 
   useLayoutEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -68,85 +53,77 @@ export function LandingHeroQueryInput({
     return () => mq.removeEventListener("change", apply);
   }, []);
 
-  const clearTimer = () => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  };
+  const showFake = value.length === 0;
+
+  const prompts = useMemo(() => [...EXAMPLE_PROMPTS], []);
 
   useEffect(() => {
-    clearTimer();
-
-    if (value.length > 0 || reduceMotion) {
+    if (!showFake) return;
+    if (reduceMotion) {
+      setExampleIndex(0);
+      setPhase("typing");
+      setTyped(prompts[0] ?? "");
       return;
     }
 
-    let cancelled = false;
+    setExampleIndex(0);
+    setPhase("typing");
+    setTyped("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduceMotion, showFake]);
 
-    const schedule = (fn: () => void, ms: number) => {
-      clearTimer();
-      timerRef.current = setTimeout(() => {
-        timerRef.current = null;
-        if (!cancelled) fn();
-      }, ms);
-    };
+  useEffect(() => {
+    if (!showFake) return;
+    if (reduceMotion) return;
 
-    const step = () => {
-      if (cancelled) return;
-      const target = PLACEHOLDER_EXAMPLES[indexRef.current];
+    const current = prompts[exampleIndex % prompts.length] ?? "";
 
-      if (!deletingRef.current) {
-        if (textRef.current.length < target.length) {
-          textRef.current = target.slice(0, textRef.current.length + 1);
-          setDisplayedPlaceholderText(textRef.current);
-          setIsDeleting(false);
-          setCurrentExampleIndex(indexRef.current);
-          schedule(step, randomInRange(TYPE_MS_MIN, TYPE_MS_MAX));
-        } else {
-          schedule(() => {
-            if (cancelled) return;
-            deletingRef.current = true;
-            setIsDeleting(true);
-            step();
-          }, randomInRange(PAUSE_TYPED_MS_MIN, PAUSE_TYPED_MS_MAX));
-        }
-      } else if (textRef.current.length > 0) {
-        textRef.current = textRef.current.slice(0, -1);
-        setDisplayedPlaceholderText(textRef.current);
-        schedule(step, randomInRange(DELETE_MS_MIN, DELETE_MS_MAX));
+    const typeDelayMs = 52;
+    const typeJitterMs = 58;
+    const pauseAfterTypedMs = 1100;
+    const clearDelayMs = 22;
+    const clearJitterMs = 26;
+    const pauseAfterClearedMs = 320;
+
+    const schedule = (ms: number, fn: () => void) => window.setTimeout(fn, ms);
+
+    let timeoutId: number | null = null;
+
+    if (phase === "typing") {
+      if (typed.length >= current.length) {
+        timeoutId = schedule(pauseAfterTypedMs, () => setPhase("pause_after_typed"));
       } else {
-        deletingRef.current = false;
-        setIsDeleting(false);
-        indexRef.current =
-          (indexRef.current + 1) % PLACEHOLDER_EXAMPLES.length;
-        setCurrentExampleIndex(indexRef.current);
-        schedule(step, randomInRange(PAUSE_BEFORE_NEXT_MS_MIN, PAUSE_BEFORE_NEXT_MS_MAX));
+        const nextChar = current.slice(0, typed.length + 1);
+        const jitter = Math.round(Math.random() * typeJitterMs);
+        timeoutId = schedule(typeDelayMs + jitter, () => setTyped(nextChar));
       }
-    };
+    }
 
-    queueMicrotask(() => {
-      if (cancelled) return;
-      indexRef.current = 0;
-      textRef.current = "";
-      deletingRef.current = false;
-      setCurrentExampleIndex(0);
-      setDisplayedPlaceholderText("");
-      setIsDeleting(false);
-      step();
-    });
+    if (phase === "pause_after_typed") {
+      timeoutId = schedule(80, () => setPhase("clearing"));
+    }
+
+    if (phase === "clearing") {
+      if (typed.length === 0) {
+        timeoutId = schedule(pauseAfterClearedMs, () => setPhase("pause_after_cleared"));
+      } else {
+        const next = typed.slice(0, -1);
+        const jitter = Math.round(Math.random() * clearJitterMs);
+        timeoutId = schedule(clearDelayMs + jitter, () => setTyped(next));
+      }
+    }
+
+    if (phase === "pause_after_cleared") {
+      timeoutId = schedule(0, () => {
+        setExampleIndex((i) => (i + 1) % prompts.length);
+        setPhase("typing");
+      });
+    }
 
     return () => {
-      cancelled = true;
-      clearTimer();
+      if (timeoutId != null) window.clearTimeout(timeoutId);
     };
-  }, [value, reduceMotion]);
-
-  const showFake = value.length === 0;
-
-  const placeholderOverlayText = reduceMotion
-    ? PLACEHOLDER_EXAMPLES[0]
-    : displayedPlaceholderText;
+  }, [exampleIndex, phase, prompts, reduceMotion, showFake, typed]);
 
   return (
     <div
@@ -176,12 +153,10 @@ export function LandingHeroQueryInput({
               >
                 <div
                   className="min-h-[1.25rem] min-w-0 flex-1 text-left text-[16px] leading-[1.35] tracking-[-0.01em] text-chat-text-secondary whitespace-normal break-words"
-                  data-example-index={reduceMotion ? 0 : currentExampleIndex}
-                  data-deleting={
-                    reduceMotion ? "false" : isDeleting ? "true" : "false"
-                  }
+                  data-example-index={exampleIndex}
+                  data-deleting={phase === "clearing" ? "true" : "false"}
                 >
-                  {placeholderOverlayText}
+                  {typed}
                   {!reduceMotion ? <span className="nyra-hero-query-caret" /> : null}
                 </div>
               </div>

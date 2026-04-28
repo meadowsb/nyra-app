@@ -27,10 +27,23 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const { email: rawEmail, prompt: rawPrompt } = body as Record<
-    string,
-    unknown
-  >;
+  const {
+    firstName: rawFirstName,
+    email: rawEmail,
+    prompt: rawPrompt,
+  } = body as Record<string, unknown>;
+
+  if (typeof rawFirstName !== "string") {
+    return Response.json({ error: "First name is required" }, { status: 400 });
+  }
+
+  const firstName = rawFirstName.trim();
+  if (!firstName) {
+    return Response.json({ error: "First name is required" }, { status: 400 });
+  }
+  if (firstName.length > 120) {
+    return Response.json({ error: "First name is too long" }, { status: 400 });
+  }
 
   if (typeof rawEmail !== "string") {
     return Response.json({ error: "Email is required" }, { status: 400 });
@@ -56,6 +69,7 @@ export async function POST(request: Request) {
   }
 
   const { error: insertError } = await supabase.from("waitlist").insert({
+    first_name: firstName,
     email,
     prompt,
   });
@@ -65,7 +79,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unable to save signup" }, { status: 500 });
   }
 
-  console.log("[waitlist]", JSON.stringify({ email, prompt }));
+  console.log("[waitlist]", JSON.stringify({ firstName, email, prompt }));
 
   try {
     if (!process.env.RESEND_API_KEY?.trim()) {
@@ -73,16 +87,20 @@ export async function POST(request: Request) {
         "[waitlist] RESEND_API_KEY missing — signup saved without confirmation email"
       );
     } else {
+      const safeName = firstName?.trim() || "there";
       const { error: sendError } = await resend.emails.send({
         from: "Nyra <hello@meetnyra.com>",
         to: email,
-        subject: "You’re on the Nyra list",
-        html: [
-          "<p>Hi there,</p>",
-          "<p>Thanks for joining Nyra.</p>",
-          "<p>We’re preparing your wedding shortlist and will reach out when your matches are ready.</p>",
-          "<p>— Nyra</p>",
-        ].join("\n"),
+        subject: "You're on the Nyra list ✨",
+        html: `<p>Hi ${safeName},</p>
+
+<p>Thanks for joining Nyra.</p>
+
+<p>We're building a simpler way to plan a wedding — without the back-and-forth.</p>
+
+<p>You'll be among the first to try it when we open things up.</p>
+
+<p>— Nyra</p>`,
       });
 
       if (sendError) {

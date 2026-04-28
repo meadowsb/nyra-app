@@ -818,6 +818,17 @@ body {
   }
 }
 
+/**
+ * YOUR RESULTS → example chat: same vertical rhythm as Testimonials → cards.
+ * `LandingScrollScrubbedExampleChat` applies `sm:-translate-y-[3%]` on the preview;
+ * compensate so the visible gap matches `.nyra-landing-section-head-to-content` elsewhere.
+ */
+@media (min-width: 640px) {
+  .nyra-landing-section-head-to-example-chat.nyra-landing-section-head-to-content {
+    margin-top: calc(48px + 1rem);
+  }
+}
+
 /** Scroll-reveal: hidden only after hydration when not yet active. */
 .nyra-landing-reveal--hydrated:not(.nyra-landing-reveal--active) .nyra-landing-reveal-head,
 .nyra-landing-reveal--hydrated:not(.nyra-landing-reveal--active) .nyra-landing-reveal-card {
