@@ -14,12 +14,10 @@ import {
 import { usePrefersReducedMotion } from "@/components/AssistantStreamedText";
 import { LandingHeroQueryInput } from "@/components/LandingHeroQueryInput";
 import { NYRA_OPEN_WAITLIST_DIRECT } from "@/components/LandingWaitlistDirectCta";
+import { prepareForOverlay } from "@/lib/prepareForOverlay";
 
 /** Hard cap: waitlist modal opens after this (ms). */
 const THINKING_TOTAL_MS = 2000;
-
-/** Let iOS dismiss the keyboard and settle the visual viewport before fixed overlays. */
-const IOS_OVERLAY_PREP_MS = 200;
 
 /** Opacity crossfade between lines — mid-range of 1.2–1.8s brief, compressed to stay under 2s total. */
 const THINKING_CROSSFADE_MS = 520;
@@ -171,7 +169,7 @@ export function LandingHeroWaitlistGate() {
   const firstNameInputRef = useRef<HTMLInputElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
   const heroQueryInputRef = useRef<HTMLInputElement>(null);
-  const overlayPrepTimerRef = useRef<number | null>(null);
+  const prevBodyOverflowRef = useRef<string | null>(null);
 
   const closeWaitlistModal = useCallback(() => {
     setWaitlistOpen(false);
@@ -189,7 +187,12 @@ export function LandingHeroWaitlistGate() {
     setThinkingSequence([]);
   }, []);
 
-  const openWaitlistDirect = useCallback(() => {
+  const openWaitlistDirect = useCallback(async () => {
+    await prepareForOverlay([
+      heroQueryInputRef.current,
+      firstNameInputRef.current,
+      emailInputRef.current,
+    ]);
     dismissThinking();
     setStoredPrompt("");
     setFirstName("");
@@ -201,36 +204,25 @@ export function LandingHeroWaitlistGate() {
     setWaitlistOpen(true);
   }, [dismissThinking]);
 
-  const handleHeroSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleHeroSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const raw = fd.get("query");
     const query = typeof raw === "string" ? raw : "";
     const trimmed = query.trim();
 
-    if (overlayPrepTimerRef.current != null) {
-      window.clearTimeout(overlayPrepTimerRef.current);
-      overlayPrepTimerRef.current = null;
-    }
+    await prepareForOverlay([
+      heroQueryInputRef.current,
+      firstNameInputRef.current,
+      emailInputRef.current,
+    ]);
 
-    (document.activeElement as HTMLElement | null)?.blur();
-    heroQueryInputRef.current?.blur();
-
-    try {
-      window.scrollTo({ top: 0, behavior: "instant" });
-    } catch {
-      window.scrollTo(0, 0);
-    }
-
-    overlayPrepTimerRef.current = window.setTimeout(() => {
-      overlayPrepTimerRef.current = null;
-      setStoredPrompt(trimmed);
-      setWaitlistPhase("form");
-      const seq = buildThinkingSequence(trimmed);
-      setThinkingSequence(seq.length > 0 ? seq : buildThinkingSequence(""));
-      setThinkingPhaseIndex(0);
-      setThinkingActive(true);
-    }, IOS_OVERLAY_PREP_MS);
+    setStoredPrompt(trimmed);
+    setWaitlistPhase("form");
+    const seq = buildThinkingSequence(trimmed);
+    setThinkingSequence(seq.length > 0 ? seq : buildThinkingSequence(""));
+    setThinkingPhaseIndex(0);
+    setThinkingActive(true);
   };
 
   const handleJoinWaitlist = useCallback(async () => {
@@ -281,6 +273,13 @@ export function LandingHeroWaitlistGate() {
         return;
       }
 
+      firstNameInputRef.current?.blur();
+      emailInputRef.current?.blur();
+      await prepareForOverlay([
+        heroQueryInputRef.current,
+        firstNameInputRef.current,
+        emailInputRef.current,
+      ]);
       setWaitlistPhase("success");
     } catch {
       setWaitlistError("Something went wrong. Please try again.");
@@ -295,24 +294,25 @@ export function LandingHeroWaitlistGate() {
   );
 
   useEffect(() => {
-    return () => {
-      if (overlayPrepTimerRef.current != null) {
-        window.clearTimeout(overlayPrepTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     if (!thinkingActive) return;
 
-    if (prefersReducedMotion) {
-      const id = window.setTimeout(() => {
+    const openModalAfterThinking = () => {
+      void (async () => {
+        await prepareForOverlay([
+          heroQueryInputRef.current,
+          firstNameInputRef.current,
+          emailInputRef.current,
+        ]);
         setThinkingActive(false);
         setThinkingPhaseIndex(0);
         setThinkingSequence([]);
         setWaitlistEntrySource("prompt");
         setWaitlistOpen(true);
-      }, THINKING_DURATION_REDUCED_MS);
+      })();
+    };
+
+    if (prefersReducedMotion) {
+      const id = window.setTimeout(openModalAfterThinking, THINKING_DURATION_REDUCED_MS);
       return () => window.clearTimeout(id);
     }
 
@@ -328,15 +328,7 @@ export function LandingHeroWaitlistGate() {
       );
     }
 
-    timeouts.push(
-      window.setTimeout(() => {
-        setThinkingActive(false);
-        setThinkingPhaseIndex(0);
-        setThinkingSequence([]);
-        setWaitlistEntrySource("prompt");
-        setWaitlistOpen(true);
-      }, THINKING_TOTAL_MS)
-    );
+    timeouts.push(window.setTimeout(openModalAfterThinking, THINKING_TOTAL_MS));
 
     return () => {
       for (const t of timeouts) window.clearTimeout(t);
@@ -344,14 +336,26 @@ export function LandingHeroWaitlistGate() {
   }, [thinkingActive, prefersReducedMotion, sequenceForTiming]);
 
   useEffect(() => {
-    if (!waitlistOpen && !thinkingActive) return;
-
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
+    const locked = waitlistOpen || thinkingActive;
+    if (locked) {
+      if (prevBodyOverflowRef.current === null) {
+        prevBodyOverflowRef.current = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+      }
+    } else if (prevBodyOverflowRef.current !== null) {
+      document.body.style.overflow = prevBodyOverflowRef.current;
+      prevBodyOverflowRef.current = null;
+    }
   }, [waitlistOpen, thinkingActive]);
+
+  useEffect(() => {
+    return () => {
+      if (prevBodyOverflowRef.current !== null) {
+        document.body.style.overflow = prevBodyOverflowRef.current;
+        prevBodyOverflowRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!waitlistOpen || waitlistPhase !== "form") return;
@@ -362,7 +366,9 @@ export function LandingHeroWaitlistGate() {
   }, [waitlistOpen, waitlistPhase]);
 
   useEffect(() => {
-    const onOpenDirect = () => openWaitlistDirect();
+    const onOpenDirect = () => {
+      void openWaitlistDirect();
+    };
     window.addEventListener(NYRA_OPEN_WAITLIST_DIRECT, onOpenDirect);
     return () => window.removeEventListener(NYRA_OPEN_WAITLIST_DIRECT, onOpenDirect);
   }, [openWaitlistDirect]);
@@ -409,7 +415,7 @@ export function LandingHeroWaitlistGate() {
 
       {thinkingActive ? (
         <div
-          className="fixed inset-0 z-[79] flex h-[100dvh] min-h-[100dvh] w-full items-center justify-center px-4 py-6"
+          className="fixed inset-0 z-[100] flex h-[100dvh] min-h-[100dvh] w-full items-center justify-center px-4 py-6"
           role="presentation"
         >
           <button
@@ -500,7 +506,7 @@ export function LandingHeroWaitlistGate() {
 
       {waitlistOpen ? (
         <div
-          className="fixed inset-0 z-[80] flex h-[100dvh] min-h-[100dvh] w-full items-center justify-center px-4 py-6"
+          className="fixed inset-0 z-[101] flex h-[100dvh] min-h-[100dvh] w-full items-center justify-center px-4 py-6"
           role="presentation"
         >
           <button

@@ -10,7 +10,8 @@ export function LandingWaitlistDirectCta() {
       <button
         type="button"
         className="nyra-btn-primary w-full sm:w-auto sm:min-w-[240px] sm:px-10"
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation();
           window.dispatchEvent(new Event(NYRA_OPEN_WAITLIST_DIRECT));
         }}
       >
