@@ -951,9 +951,10 @@ body {
 }
 
 /**
- * Hero wordmark — soft rose→violet gradient tied to the atmosphere; readable on dark canvas without loud accent.
+ * Hero + landing footer wordmark — soft rose→violet gradient tied to the atmosphere; readable on dark canvas without loud accent.
  */
-.nyra-landing-hero-section .nyra-landing-hero-wordmark.nyra-eyebrow {
+.nyra-landing-hero-section .nyra-landing-hero-wordmark.nyra-eyebrow,
+.nyra-landing-root footer .nyra-landing-footer-wordmark.nyra-eyebrow {
   letter-spacing: 0.2em;
   color: transparent;
   -webkit-text-fill-color: transparent;

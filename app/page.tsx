@@ -48,7 +48,7 @@ export default function Home() {
           <LandingHeroBackgroundMedia />
           <div className="relative z-10 mx-auto w-full max-w-[1200px] px-2 py-16 sm:px-3 sm:py-20 lg:py-24">
             <SectionLabel className="nyra-landing-hero-wordmark nyra-landing-hero-fade-up nyra-landing-hero-fade-up--delay-1 text-center">
-              Nyra
+              NYRA
             </SectionLabel>
             <h1 className="nyra-landing-hero-fade-up nyra-landing-hero-fade-up--delay-2 mx-auto mt-5 max-w-[46rem] text-center text-[clamp(1.875rem,4.2vw,2.875rem)] font-semibold leading-[1.1] tracking-[-0.02em] text-chat-text-primary">
               Plan your wedding <br />
@@ -72,7 +72,7 @@ export default function Home() {
           data-landing-bg="example"
           className="border-b border-white/[0.07] bg-transparent"
         >
-          <LandingRevealOnView className="mx-auto max-w-[1200px] px-2 py-20 sm:px-3 sm:py-24 lg:py-28">
+          <LandingRevealOnView className="mx-auto max-w-[1200px] px-2 py-20 max-lg:pb-12 sm:px-3 sm:py-24 lg:py-28">
             <header className="nyra-landing-glass-header nyra-landing-section-head-card nyra-landing-reveal-head mx-auto max-w-2xl text-center">
               <SectionLabel>Your results</SectionLabel>
               <h2 className="nyra-landing-section-headline">Your wedding, organized in one place</h2>
@@ -91,7 +91,7 @@ export default function Home() {
         <section
           id="landing-section-testimonials"
           data-landing-bg="testimonials"
-          className="border-b border-white/[0.07] bg-transparent"
+          className="border-b border-white/[0.07] bg-transparent max-lg:mt-16"
         >
           <LandingRevealOnView className="mx-auto max-w-[1200px] px-2 py-20 sm:px-3 sm:py-24 lg:py-28">
             <div className="nyra-landing-glass-header nyra-landing-section-head-card nyra-landing-reveal-head mx-auto max-w-2xl text-center">
@@ -160,15 +160,15 @@ export default function Home() {
         data-landing-bg="footer"
         className="relative z-[1] min-h-[min(36vh,22rem)] border-t border-white/[0.08] bg-transparent"
       >
-        <div className="mx-auto flex max-w-[1200px] flex-col gap-12 px-2 py-16 sm:px-3 lg:flex-row lg:items-center lg:justify-between lg:py-20">
-          <div>
-            <p className="text-sm font-semibold tracking-[-0.01em] text-chat-text-primary">Nyra</p>
+        <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-10 px-2 py-16 text-center sm:px-3 lg:flex-row lg:items-center lg:justify-between lg:gap-12 lg:py-20 lg:text-left">
+          <div className="flex max-w-xs flex-col items-center lg:max-w-none lg:items-start">
+            <p className="nyra-eyebrow nyra-landing-footer-wordmark">NYRA</p>
             <p className="mt-2 max-w-xs text-[13px] leading-relaxed text-chat-text-secondary">
               Your AI wedding planner — from first idea to final decisions
             </p>
           </div>
-          <nav aria-label="Footer">
-            <ul className="flex flex-wrap gap-x-8 gap-y-3 text-sm font-normal text-chat-text-muted">
+          <nav aria-label="Footer" className="w-full lg:w-auto">
+            <ul className="flex flex-col items-center gap-4 text-sm font-normal text-chat-text-muted lg:flex-row lg:flex-wrap lg:justify-end lg:gap-x-8 lg:gap-y-3">
               <li>
                 <a
                   href="mailto:support@nyra.com"

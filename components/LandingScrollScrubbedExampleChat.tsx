@@ -1,27 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { LandingExampleChatPreview } from "@/components/LandingExampleChatPreview";
 
-function subscribePrefersReducedMotion(onStoreChange: () => void) {
-  const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-  mq.addEventListener("change", onStoreChange);
-  return () => mq.removeEventListener("change", onStoreChange);
-}
-
-function getPrefersReducedMotionSnapshot() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-function getPrefersReducedMotionServerSnapshot() {
-  return false;
-}
+/** Scroll-scrubbing + sticky pin only at `lg` and up; mobile uses normal flow (no overlap with the next section). */
+const LANDING_EXAMPLE_SCRUB_MIN_WIDTH = "(min-width: 1024px)";
 
 /**
- * Sticky scroll track: progress 0→1 is tied to how far the user has scrolled
+ * Sticky scroll track (lg+): progress 0→1 is tied to how far the user has scrolled
  * through this block (not time). Inner panel stays pinned while the outer
  * height (200vh) is consumed, then normal scrolling resumes.
+ *
+ * Below lg: no sticky track — full preview progress, document flow only.
  */
 export function LandingScrollScrubbedExampleChat() {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -31,14 +22,19 @@ export function LandingScrollScrubbedExampleChat() {
   const rafRef = useRef(0);
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  const prefersReducedMotion = useSyncExternalStore(
-    subscribePrefersReducedMotion,
-    getPrefersReducedMotionSnapshot,
-    getPrefersReducedMotionServerSnapshot,
-  );
+  useLayoutEffect(() => {
+    const wideMq = window.matchMedia(LANDING_EXAMPLE_SCRUB_MIN_WIDTH);
+    const reducedMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!wideMq.matches || reducedMq.matches) {
+      maxProgressReachedRef.current = 1;
+      smoothedRef.current = 1;
+      setScrollProgress(1);
+    }
+  }, []);
 
   useEffect(() => {
-    const reduced = prefersReducedMotion;
+    const wideMq = window.matchMedia(LANDING_EXAMPLE_SCRUB_MIN_WIDTH);
+    const reducedMq = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     const computeRaw = () => {
       const el = trackRef.current;
@@ -52,7 +48,7 @@ export function LandingScrollScrubbedExampleChat() {
     };
 
     const tick = () => {
-      if (reduced) {
+      if (reducedMq.matches || !wideMq.matches) {
         maxProgressReachedRef.current = 1;
         smoothedRef.current = 1;
         setScrollProgress(1);
@@ -85,20 +81,45 @@ export function LandingScrollScrubbedExampleChat() {
       rafRef.current = window.requestAnimationFrame(tick);
     };
 
-    kick();
+    const onBreakpointOrMotion = () => {
+      if (!wideMq.matches || reducedMq.matches) {
+        maxProgressReachedRef.current = 1;
+        smoothedRef.current = 1;
+        setScrollProgress(1);
+        window.cancelAnimationFrame(rafRef.current);
+        return;
+      }
+      maxProgressReachedRef.current = 0;
+      smoothedRef.current = 0;
+      kick();
+    };
+
+    if (!wideMq.matches || reducedMq.matches) {
+      maxProgressReachedRef.current = 1;
+      smoothedRef.current = 1;
+      setScrollProgress(1);
+    } else {
+      kick();
+    }
+
     window.addEventListener("scroll", kick, { passive: true });
     window.addEventListener("resize", kick);
+    wideMq.addEventListener("change", onBreakpointOrMotion);
+    reducedMq.addEventListener("change", onBreakpointOrMotion);
+
     return () => {
       window.removeEventListener("scroll", kick);
       window.removeEventListener("resize", kick);
+      wideMq.removeEventListener("change", onBreakpointOrMotion);
+      reducedMq.removeEventListener("change", onBreakpointOrMotion);
       window.cancelAnimationFrame(rafRef.current);
     };
-  }, [prefersReducedMotion]);
+  }, []);
 
   return (
-    <div ref={trackRef} className="relative min-h-[200vh] w-full">
-      <div className="sticky top-0 flex h-[100vh] min-h-[100vh] w-full items-center justify-center">
-        <div className="w-full min-w-0 -translate-y-[3%]">
+    <div ref={trackRef} className="relative min-h-0 w-full lg:min-h-[200vh]">
+      <div className="relative flex w-full items-center justify-center lg:sticky lg:top-0 lg:h-[100vh] lg:min-h-[100vh]">
+        <div className="w-full min-w-0 sm:-translate-y-[3%]">
           <div className="nyra-landing-glass-content nyra-landing-reveal-card nyra-landing-reveal-sequence-tail min-h-0 w-full min-w-0 overflow-hidden rounded-2xl">
             <LandingExampleChatPreview scrollProgress={scrollProgress} />
           </div>

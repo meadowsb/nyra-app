@@ -1,9 +1,11 @@
 "use client";
 
+import { motion } from "framer-motion";
 import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -12,26 +14,150 @@ import {
 import { usePrefersReducedMotion } from "@/components/AssistantStreamedText";
 import { LandingHeroQueryInput } from "@/components/LandingHeroQueryInput";
 
-const THINKING_LINES = [
-  "Finding venues that match your vision…",
-  "Checking availability and pricing…",
-  "Matching vendors to your style…",
+/** Hard cap: waitlist modal opens after this (ms). */
+const THINKING_TOTAL_MS = 2000;
+
+/** Opacity crossfade between lines — mid-range of 1.2–1.8s brief, compressed to stay under 2s total. */
+const THINKING_CROSSFADE_MS = 520;
+
+const THINKING_DURATION_REDUCED_MS = 450;
+
+const STYLE_KEYWORDS = [
+  "modern",
+  "minimal",
+  "minimalist",
+  "waterfront",
+  "beach",
+  "garden",
+  "industrial",
+  "classic",
+  "romantic",
+  "rustic",
+  "luxe",
+  "luxury",
+  "editorial",
+  "boho",
+  "vintage",
+  "intimate",
 ] as const;
 
-/** Total time before the waitlist modal opens (ms). */
-const THINKING_DURATION_MIN_MS = 1500;
-const THINKING_DURATION_MAX_MS = 2500;
-const THINKING_LINE_ROTATE_MS = 700;
-const THINKING_DURATION_REDUCED_MS = 450;
+function titleCase(phrase: string) {
+  return phrase
+    .trim()
+    .split(/\s+/g)
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1).toLowerCase() : word))
+    .join(" ");
+}
+
+function normalizeStyle(style: string) {
+  const t = style.trim().toLowerCase();
+  if (t === "minimalist") return "minimal";
+  if (t === "luxury") return "luxe";
+  return t;
+}
+
+type LandingSignals = {
+  guestCount?: number;
+  location?: string;
+  style?: string;
+  outdoorPreference?: boolean;
+  budgetLabel?: string;
+};
+
+function parseLandingSignals(query: string): LandingSignals {
+  const lower = query.toLowerCase();
+
+  const guestMatch =
+    lower.match(/(\d{1,4})\s*(?:guests|people|ppl|attendees)\b/i) ||
+    lower.match(/\bfor\s+(\d{1,4})\s+guests?\b/i);
+  const guestCount = guestMatch ? Number(guestMatch[1]) : undefined;
+
+  const styleHit = STYLE_KEYWORDS.find((kw) => lower.includes(kw));
+  const style = styleHit ? normalizeStyle(styleHit) : undefined;
+
+  let location: string | undefined;
+  const inMatch = query.match(/\bin\s+([^.,;\n]+)/i);
+  if (inMatch?.[1]) {
+    let rest = inMatch[1].trim();
+    const underSplit = /\s+under\b/i.exec(rest);
+    if (underSplit && underSplit.index != null && underSplit.index > 0) {
+      rest = rest.slice(0, underSplit.index).trim();
+    }
+    const forSplit = /\s+for\s+/i.exec(rest);
+    if (forSplit && forSplit.index != null && forSplit.index > 0) {
+      rest = rest.slice(0, forSplit.index).trim();
+    }
+    location = rest ? titleCase(rest) : undefined;
+  }
+
+  let outdoorPreference: boolean | undefined;
+  if (/\boutdoor\b|\bgarden\b|\bbeach\b|\balfresco\b/i.test(lower)) outdoorPreference = true;
+  else if (/\bindoor\b/i.test(lower)) outdoorPreference = false;
+
+  let budgetLabel: string | undefined;
+  const underMoney = lower.match(
+    /\bunder\s+\$?\s*([\d]{1,3}(?:,\d{3})*|\d+)\s*(k|m|thousand|million)?\b/
+  );
+  if (underMoney) {
+    const raw = underMoney[1].replace(/,/g, "");
+    const n = Number(raw);
+    const suffix = underMoney[2];
+    if (Number.isFinite(n)) {
+      if (suffix === "k" || suffix === "thousand") budgetLabel = `$${n}k`;
+      else if (suffix === "m" || suffix === "million") budgetLabel = `$${n}M`;
+      else if (n >= 1000 && n % 1000 === 0) budgetLabel = `$${n / 1000}k`;
+      else if (n < 500) budgetLabel = `$${n}k`;
+      else budgetLabel = `$${n.toLocaleString()}`;
+    }
+  }
+  if (!budgetLabel) {
+    const underShortK = lower.match(/\bunder\s+\$?\s*(\d{1,3})\s*k\b/);
+    if (underShortK) budgetLabel = `$${underShortK[1]}k`;
+    else {
+      const kOnly = lower.match(/\$\s*(\d{1,3})\s*k\b/);
+      if (kOnly) budgetLabel = `$${kOnly[1]}k`;
+    }
+  }
+
+  return {
+    guestCount: Number.isFinite(guestCount) ? guestCount : undefined,
+    location,
+    style,
+    outdoorPreference,
+    budgetLabel,
+  };
+}
+
+function buildThinkingSequence(query: string): readonly string[] {
+  const s = parseLandingSignals(query.trim());
+  const lines: string[] = ["Understanding your vision…"];
+
+  lines.push(
+    s.location
+      ? `Exploring venues in ${s.location}…`
+      : "Finding venues that could work…"
+  );
+
+  if (s.budgetLabel) {
+    lines.push("Filtering options for your budget…");
+  }
+
+  lines.push("Matching vendors to your style…");
+  lines.push("Getting ready to match you…");
+
+  return lines;
+}
 
 export function LandingHeroWaitlistGate() {
   const titleId = useId();
   const descriptionId = useId();
+  const successSupplementId = useId();
   const emailFieldId = useId();
   const prefersReducedMotion = usePrefersReducedMotion();
 
   const [thinkingActive, setThinkingActive] = useState(false);
-  const [thinkingLineIndex, setThinkingLineIndex] = useState(0);
+  const [thinkingSequence, setThinkingSequence] = useState<readonly string[]>([]);
+  const [thinkingPhaseIndex, setThinkingPhaseIndex] = useState(0);
   const [waitlistOpen, setWaitlistOpen] = useState(false);
   /** Prompt from the hero form, stored when opening the waitlist modal (no navigation). */
   const [storedPrompt, setStoredPrompt] = useState("");
@@ -54,7 +180,8 @@ export function LandingHeroWaitlistGate() {
 
   const dismissThinking = useCallback(() => {
     setThinkingActive(false);
-    setThinkingLineIndex(0);
+    setThinkingPhaseIndex(0);
+    setThinkingSequence([]);
   }, []);
 
   const handleHeroSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -66,7 +193,9 @@ export function LandingHeroWaitlistGate() {
 
     setStoredPrompt(trimmed);
     setWaitlistPhase("form");
-    setThinkingLineIndex(0);
+    const seq = buildThinkingSequence(trimmed);
+    setThinkingSequence(seq.length > 0 ? seq : buildThinkingSequence(""));
+    setThinkingPhaseIndex(0);
     setThinkingActive(true);
   };
 
@@ -112,28 +241,49 @@ export function LandingHeroWaitlistGate() {
     }
   }, [email, storedPrompt]);
 
-  useEffect(() => {
-    if (thinkingActive) {
-      const totalMs = prefersReducedMotion
-        ? THINKING_DURATION_REDUCED_MS
-        : THINKING_DURATION_MIN_MS +
-          Math.random() * (THINKING_DURATION_MAX_MS - THINKING_DURATION_MIN_MS);
-      const id = window.setTimeout(() => {
-        setThinkingActive(false);
-        setThinkingLineIndex(0);
-        setWaitlistOpen(true);
-      }, totalMs);
-      return () => window.clearTimeout(id);
-    }
-  }, [thinkingActive, prefersReducedMotion]);
+  const sequenceForTiming = useMemo(
+    () => (thinkingSequence.length > 0 ? thinkingSequence : buildThinkingSequence("")),
+    [thinkingSequence]
+  );
 
   useEffect(() => {
-    if (!thinkingActive || prefersReducedMotion) return;
-    const id = window.setInterval(() => {
-      setThinkingLineIndex((i) => (i + 1) % THINKING_LINES.length);
-    }, THINKING_LINE_ROTATE_MS);
-    return () => window.clearInterval(id);
-  }, [thinkingActive, prefersReducedMotion]);
+    if (!thinkingActive) return;
+
+    if (prefersReducedMotion) {
+      const id = window.setTimeout(() => {
+        setThinkingActive(false);
+        setThinkingPhaseIndex(0);
+        setThinkingSequence([]);
+        setWaitlistOpen(true);
+      }, THINKING_DURATION_REDUCED_MS);
+      return () => window.clearTimeout(id);
+    }
+
+    const n = Math.max(1, sequenceForTiming.length);
+    const stepMs = THINKING_TOTAL_MS / n;
+    const timeouts: number[] = [];
+
+    for (let i = 1; i < n; i++) {
+      timeouts.push(
+        window.setTimeout(() => {
+          setThinkingPhaseIndex(i);
+        }, Math.round(stepMs * i))
+      );
+    }
+
+    timeouts.push(
+      window.setTimeout(() => {
+        setThinkingActive(false);
+        setThinkingPhaseIndex(0);
+        setThinkingSequence([]);
+        setWaitlistOpen(true);
+      }, THINKING_TOTAL_MS)
+    );
+
+    return () => {
+      for (const t of timeouts) window.clearTimeout(t);
+    };
+  }, [thinkingActive, prefersReducedMotion, sequenceForTiming]);
 
   useEffect(() => {
     if (!waitlistOpen && !thinkingActive) return;
@@ -179,6 +329,11 @@ export function LandingHeroWaitlistGate() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [thinkingActive, dismissThinking]);
 
+  const crossfadeSec = prefersReducedMotion ? 0 : THINKING_CROSSFADE_MS / 1000;
+  const progressDurationSec = prefersReducedMotion
+    ? 0.2
+    : THINKING_TOTAL_MS / 1000;
+
   return (
     <>
       <form
@@ -190,7 +345,7 @@ export function LandingHeroWaitlistGate() {
 
       {thinkingActive ? (
         <div
-          className="fixed inset-0 z-[79] flex items-end justify-center py-5 sm:items-center sm:p-6"
+          className="fixed inset-0 z-[79]"
           role="presentation"
         >
           <button
@@ -203,18 +358,85 @@ export function LandingHeroWaitlistGate() {
             role="status"
             aria-live="polite"
             aria-busy="true"
-            className="relative z-[1] mx-auto w-full max-w-[min(420px,100%)] rounded-t-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:max-w-lg sm:rounded-2xl sm:px-7 sm:pb-7 sm:pt-6"
+            className="fixed left-1/2 top-1/2 z-[81] w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-t-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:rounded-2xl sm:px-7 sm:pb-7 sm:pt-6"
           >
-            <p className="text-center text-[15px] leading-snug tracking-[-0.01em] text-chat-text-primary">
-              {THINKING_LINES[thinkingLineIndex]}
+            <p className="sr-only">
+              {sequenceForTiming[thinkingPhaseIndex] ?? sequenceForTiming[0]}
             </p>
+            <div className="relative mx-auto min-h-[3.75rem] w-full max-w-[36ch]">
+              {sequenceForTiming.map((line, i) => (
+                <motion.p
+                  key={i}
+                  aria-hidden
+                  className="absolute inset-x-0 top-0 text-center text-[15px] leading-snug tracking-[-0.01em] text-chat-text-primary"
+                  animate={{
+                    opacity:
+                      prefersReducedMotion && i === 0
+                        ? 1
+                        : prefersReducedMotion
+                          ? 0
+                          : thinkingPhaseIndex === i
+                            ? 1
+                            : 0,
+                  }}
+                  transition={{
+                    duration: crossfadeSec,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                >
+                  {line}
+                </motion.p>
+              ))}
+            </div>
+
+            <div
+              className="mt-5 flex justify-center gap-1.5"
+              aria-hidden
+            >
+              {[0, 1, 2].map((d) => (
+                <motion.span
+                  key={d}
+                  className="size-1.5 rounded-full bg-white/[0.42]"
+                  animate={
+                    prefersReducedMotion
+                      ? { opacity: 0.45 }
+                      : {
+                          opacity: [0.28, 1, 0.28],
+                          scale: [1, 1.18, 1],
+                        }
+                  }
+                  transition={
+                    prefersReducedMotion
+                      ? { duration: 0 }
+                      : {
+                          duration: 1.18,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: d * 0.15,
+                        }
+                  }
+                />
+              ))}
+            </div>
+
+            <div className="mt-4 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.07]">
+              <motion.div
+                className="h-full origin-left rounded-full bg-[color-mix(in_srgb,var(--nyra-accent)_78%,white)] shadow-[0_0_12px_color-mix(in_srgb,var(--nyra-accent)_35%,transparent)]"
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{
+                  duration: progressDurationSec,
+                  ease: prefersReducedMotion ? "easeOut" : "linear",
+                }}
+              />
+            </div>
           </div>
         </div>
       ) : null}
 
       {waitlistOpen ? (
         <div
-          className="fixed inset-0 z-[80] flex items-end justify-center py-5 sm:items-center sm:p-6"
+          className="fixed inset-0 z-[80]"
           role="presentation"
         >
           <button
@@ -227,8 +449,12 @@ export function LandingHeroWaitlistGate() {
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            aria-describedby={descriptionId}
-            className="relative z-[1] mx-auto w-full max-w-[min(420px,100%)] rounded-t-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:max-w-lg sm:rounded-2xl sm:px-7 sm:pb-7 sm:pt-6"
+            aria-describedby={
+              waitlistPhase === "success"
+                ? `${descriptionId} ${successSupplementId}`
+                : descriptionId
+            }
+            className="fixed left-1/2 top-1/2 z-[81] w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-t-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:rounded-2xl sm:px-7 sm:pb-7 sm:pt-6"
           >
             <button
               type="button"
@@ -262,7 +488,14 @@ export function LandingHeroWaitlistGate() {
                   id={descriptionId}
                   className="mt-2 text-[15px] leading-snug text-chat-text-secondary"
                 >
-                  We&apos;ll send your matches as soon as Nyra opens access.
+                  We&apos;ll send your matches as soon as they&apos;re ready.
+                </p>
+                <p
+                  id={successSupplementId}
+                  className="mt-2 text-[15px] leading-snug text-chat-text-secondary"
+                >
+                  You&apos;ll be among the first to see venues that match your
+                  vision.
                 </p>
               </>
             ) : (
@@ -271,14 +504,15 @@ export function LandingHeroWaitlistGate() {
                   id={titleId}
                   className="pr-10 text-lg font-semibold leading-[1.2] tracking-[-0.03em] text-chat-text-primary"
                 >
-                  Your matches are ready
+                  Get your matches first
                 </h2>
                 <p
                   id={descriptionId}
                   className="mt-2 text-[15px] leading-snug text-chat-text-secondary"
                 >
-                  Enter your email to unlock your results and see venues and
-                  vendors that fit your vision.
+                  We&apos;re preparing venues and vendors that fit your request.
+                  Enter your email and we&apos;ll send them as soon as
+                  they&apos;re ready.
                 </p>
 
                 <div className="mt-4">
@@ -319,7 +553,7 @@ export function LandingHeroWaitlistGate() {
                     disabled={waitlistSubmitting}
                     className="nyra-btn-primary w-full"
                   >
-                    {waitlistSubmitting ? "Unlocking…" : "Unlock my results"}
+                    {waitlistSubmitting ? "Sending…" : "Get early access"}
                   </button>
                 </div>
               </>

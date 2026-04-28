@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 function getSupabase(): SupabaseClient | null {
   const url = process.env.SUPABASE_URL?.trim();
@@ -11,14 +13,6 @@ function getSupabase(): SupabaseClient | null {
 function isValidEmail(email: string): boolean {
   if (!email || email.length > 320) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 export async function POST(request: Request) {
@@ -73,36 +67,30 @@ export async function POST(request: Request) {
 
   console.log("[waitlist]", JSON.stringify({ email, prompt }));
 
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) {
-    console.log(
-      "[waitlist] RESEND_API_KEY missing — signup saved without confirmation email"
-    );
-  } else {
-    const from =
-      process.env.RESEND_FROM_EMAIL?.trim() ||
-      "Nyra <onboarding@resend.dev>";
-
-    const promptBlock = prompt
-      ? `<p style="margin:16px 0 0"><strong>Your request:</strong><br />${escapeHtml(prompt).replace(/\n/g, "<br />")}</p>`
-      : "";
-
-    const html = `<p>Thank you for joining the Nyra waitlist.</p>${promptBlock}<p style="margin:16px 0 0">We&apos;ll reach out when access opens.</p>`;
-
-    try {
-      const resend = new Resend(apiKey);
+  try {
+    if (!process.env.RESEND_API_KEY?.trim()) {
+      console.error(
+        "[waitlist] RESEND_API_KEY missing — signup saved without confirmation email"
+      );
+    } else {
       const { error: sendError } = await resend.emails.send({
-        from,
+        from: "Nyra <hello@meetnyra.com>",
         to: email,
-        subject: "You're on the Nyra waitlist 💌",
-        html,
+        subject: "You’re on the Nyra list",
+        html: [
+          "<p>Hi there,</p>",
+          "<p>Thanks for joining Nyra.</p>",
+          "<p>We’re preparing your wedding shortlist and will reach out when your matches are ready.</p>",
+          "<p>— Nyra</p>",
+        ].join("\n"),
       });
+
       if (sendError) {
         console.error("[waitlist] Resend error (signup still saved)", sendError);
       }
-    } catch (err) {
-      console.error("[waitlist] Resend send threw (signup still saved)", err);
     }
+  } catch (err) {
+    console.error("[waitlist] Resend send threw (signup still saved)", err);
   }
 
   return Response.json({ success: true });
