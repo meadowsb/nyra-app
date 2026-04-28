@@ -379,20 +379,20 @@ export function LandingHeroWaitlistGate() {
 
       {thinkingActive ? (
         <div
-          className="fixed inset-0 z-[79]"
+          className="fixed inset-0 z-[79] flex h-[100dvh] min-h-[100dvh] w-full items-center justify-center px-4 py-6"
           role="presentation"
         >
           <button
             type="button"
             aria-label="Cancel"
-            className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+            className="absolute inset-0 z-0 bg-black/55 backdrop-blur-[2px]"
             onClick={dismissThinking}
           />
           <div
             role="status"
             aria-live="polite"
             aria-busy="true"
-            className="fixed left-1/2 top-1/2 z-[81] w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-t-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:rounded-2xl sm:px-7 sm:pb-7 sm:pt-6"
+            className="relative z-[81] mx-auto w-full max-w-md max-h-[calc(100dvh-48px)] overflow-y-auto rounded-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:max-w-[420px] sm:px-7 sm:pb-7 sm:pt-6"
           >
             <p className="sr-only">
               {sequenceForTiming[thinkingPhaseIndex] ?? sequenceForTiming[0]}
@@ -470,13 +470,13 @@ export function LandingHeroWaitlistGate() {
 
       {waitlistOpen ? (
         <div
-          className="fixed inset-0 z-[80]"
+          className="fixed inset-0 z-[80] flex h-[100dvh] min-h-[100dvh] w-full items-center justify-center px-4 py-6"
           role="presentation"
         >
           <button
             type="button"
             aria-label="Close waitlist dialog"
-            className="absolute inset-0 bg-black/55 backdrop-blur-[2px]"
+            className="absolute inset-0 z-0 bg-black/55 backdrop-blur-[2px]"
             onClick={closeWaitlistModal}
           />
           <div
@@ -486,7 +486,7 @@ export function LandingHeroWaitlistGate() {
             aria-describedby={
               descriptionId
             }
-            className="fixed left-1/2 top-1/2 z-[81] w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-t-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:rounded-2xl sm:px-7 sm:pb-7 sm:pt-6"
+            className="relative z-[81] mx-auto w-full max-w-md max-h-[calc(100dvh-48px)] overflow-y-auto rounded-2xl border border-white/[0.09] bg-[rgba(20,20,25,0.78)] px-6 pb-6 pt-5 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[10px] sm:max-w-[420px] sm:px-7 sm:pb-7 sm:pt-6"
           >
             <button
               type="button"
