@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { forwardRef, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 const EXAMPLE_PROMPTS = [
   "Looking for a modern venue for 80 guests in Miami...",
@@ -30,15 +30,10 @@ function SendArrowIcon({ className }: { className?: string }) {
   );
 }
 
-export function LandingHeroQueryInput({
-  id,
-  name,
-  className,
-}: {
-  id: string;
-  name: string;
-  className?: string;
-}) {
+export const LandingHeroQueryInput = forwardRef<
+  HTMLInputElement,
+  { id: string; name: string; className?: string }
+>(function LandingHeroQueryInput({ id, name, className }, ref) {
   const [value, setValue] = useState("");
   const [reduceMotion, setReduceMotion] = useState(false);
   const [exampleIndex, setExampleIndex] = useState(0);
@@ -138,6 +133,7 @@ export function LandingHeroQueryInput({
               Message Nyra with what you want to plan
             </label>
             <input
+              ref={ref}
               id={id}
               name={name}
               value={value}
@@ -174,4 +170,4 @@ export function LandingHeroQueryInput({
       </div>
     </div>
   );
-}
+});

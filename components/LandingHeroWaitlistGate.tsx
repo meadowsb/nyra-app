@@ -18,6 +18,9 @@ import { NYRA_OPEN_WAITLIST_DIRECT } from "@/components/LandingWaitlistDirectCta
 /** Hard cap: waitlist modal opens after this (ms). */
 const THINKING_TOTAL_MS = 2000;
 
+/** Let iOS dismiss the keyboard and settle the visual viewport before fixed overlays. */
+const IOS_OVERLAY_PREP_MS = 200;
+
 /** Opacity crossfade between lines — mid-range of 1.2–1.8s brief, compressed to stay under 2s total. */
 const THINKING_CROSSFADE_MS = 520;
 
@@ -167,6 +170,8 @@ export function LandingHeroWaitlistGate() {
 
   const firstNameInputRef = useRef<HTMLInputElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
+  const heroQueryInputRef = useRef<HTMLInputElement>(null);
+  const overlayPrepTimerRef = useRef<number | null>(null);
 
   const closeWaitlistModal = useCallback(() => {
     setWaitlistOpen(false);
@@ -203,12 +208,29 @@ export function LandingHeroWaitlistGate() {
     const query = typeof raw === "string" ? raw : "";
     const trimmed = query.trim();
 
-    setStoredPrompt(trimmed);
-    setWaitlistPhase("form");
-    const seq = buildThinkingSequence(trimmed);
-    setThinkingSequence(seq.length > 0 ? seq : buildThinkingSequence(""));
-    setThinkingPhaseIndex(0);
-    setThinkingActive(true);
+    if (overlayPrepTimerRef.current != null) {
+      window.clearTimeout(overlayPrepTimerRef.current);
+      overlayPrepTimerRef.current = null;
+    }
+
+    (document.activeElement as HTMLElement | null)?.blur();
+    heroQueryInputRef.current?.blur();
+
+    try {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+
+    overlayPrepTimerRef.current = window.setTimeout(() => {
+      overlayPrepTimerRef.current = null;
+      setStoredPrompt(trimmed);
+      setWaitlistPhase("form");
+      const seq = buildThinkingSequence(trimmed);
+      setThinkingSequence(seq.length > 0 ? seq : buildThinkingSequence(""));
+      setThinkingPhaseIndex(0);
+      setThinkingActive(true);
+    }, IOS_OVERLAY_PREP_MS);
   };
 
   const handleJoinWaitlist = useCallback(async () => {
@@ -271,6 +293,14 @@ export function LandingHeroWaitlistGate() {
     () => (thinkingSequence.length > 0 ? thinkingSequence : buildThinkingSequence("")),
     [thinkingSequence]
   );
+
+  useEffect(() => {
+    return () => {
+      if (overlayPrepTimerRef.current != null) {
+        window.clearTimeout(overlayPrepTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!thinkingActive) return;
@@ -374,7 +404,7 @@ export function LandingHeroWaitlistGate() {
         onSubmit={handleHeroSubmit}
         className="nyra-landing-hero-fade-up nyra-landing-hero-fade-up--delay-4 mt-8 flex w-full flex-col items-center justify-center gap-3 px-1 sm:px-0"
       >
-        <LandingHeroQueryInput id="landing-query" name="query" />
+        <LandingHeroQueryInput ref={heroQueryInputRef} id="landing-query" name="query" />
       </form>
 
       {thinkingActive ? (
